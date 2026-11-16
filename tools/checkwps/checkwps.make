@@ -70,7 +70,7 @@ ifneq ($(SVNVERSION),$(OLDSVNVERSION))
 endif
 
 $(BUILDDIR)/rbversion.h:
-	$(call PRINTS,GEN $(@F))$(TOOLSDIR)/genversion.sh $(BUILDDIR) $(SVNVERSION)
+	$(call PRINTS,GEN $(@F))$(TOOLSDIR)/genversion.sh $(BUILDDIR) '$(SVNVERSION)'
 
 $(BUILDDIR)/apps/features: $(ROOTDIR)/apps/features.txt
 	$(SILENT)mkdir -p $(BUILDDIR)/apps

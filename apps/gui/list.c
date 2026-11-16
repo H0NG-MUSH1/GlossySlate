@@ -121,7 +121,46 @@ void list_init_item_height(struct gui_synclist *list, enum screen_type screen)
 #else
     list->line_height[screen] = line_height;
 #endif
+#ifdef IPOD_6G
+    if (screen == SCREEN_MAIN && list->minimum_line_height > list->line_height[screen])
+        list->line_height[screen] = list->minimum_line_height;
+    if (screen == SCREEN_MAIN && list->callback_get_albumartist)
+        list->line_height[screen] = MAX(list->line_height[screen],
+                                         2 * line_height + 4);
+#endif
 }
+
+#ifdef IPOD_6G
+/* the font of the artist line in album rows ("list secondary font").
+ * A font that a skin loaded too is shared: font_load_ex() finds it by its
+ * path and only counts the use, so it costs no slot and no memory. */
+static int secondary_font = -1;
+
+void list_secondary_font_apply(void)
+{
+    char path[MAX_PATH];
+    const char *name = (const char *)global_settings.list_secondary_font_file;
+    bool none = !name[0] || name[0] == '-';
+    if (!none)
+        snprintf(path, sizeof path, FONT_DIR "/%s.fnt", name);
+    if (secondary_font >= 0 &&
+        (none || !font_filename_matches_loaded_id(secondary_font, path)))
+    {
+        font_unload(secondary_font);
+        secondary_font = -1;
+    }
+    if (!none && secondary_font < 0)
+    {
+        int id = font_load_ex(path, 0, 160);
+        secondary_font = id >= 0 ? id : -1;
+    }
+}
+
+int list_secondary_font(void)
+{
+    return secondary_font;
+}
+#endif
 
 static void gui_synclist_init_display_settings(struct gui_synclist * list)
 {
@@ -157,6 +196,15 @@ void gui_synclist_init(struct gui_synclist * gui_list,
     gui_list->callback_get_item_name = callback_get_item_name;
     gui_list->callback_speak_item = NULL;
     gui_list->callback_draw_item = NULL;
+#ifdef IPOD_6G
+    gui_list->callback_draw_albumart = NULL;
+    gui_list->callback_get_albumartist = NULL;
+    gui_list->callback_item_opens = NULL;
+    gui_list->callback_get_item_value = NULL;
+    gui_list->callback_item_mark = NULL;
+    gui_list->minimum_line_height = 0;
+    gui_list->scrollbar_tick = 0;
+#endif
     gui_list->nb_items = 0;
     gui_list->selected_item = 0;
     gui_synclist_init_display_settings(gui_list);
@@ -236,7 +284,13 @@ void gui_synclist_draw(struct gui_synclist *gui_list)
     FOR_NB_SCREENS(i)
     {
         if (!skinlist_draw(&screens[i], gui_list))
+        {
             list_draw(&screens[i], gui_list);
+#ifdef IPOD_6G
+            if (i == SCREEN_MAIN)
+                skinlist_note_drawn_selection(gui_list);
+#endif
+        }
         skin_mark_dirty(i);
     }
 }
@@ -580,6 +634,49 @@ bool gui_synclist_keyclick_callback(int action, void* data)
     return action != ACTION_NONE && !IS_SYSEVENT(action);
 }
 
+#ifdef IPOD_6G
+/* Moves the knob of a list to its fade step now; bitmap/list.c */
+void list_scrollbar_update(struct gui_synclist *list);
+
+/* Shows the scrollbar again, if the list has one to show */
+static void list_scrollbar_touch(struct gui_synclist *lists)
+{
+    if (lists->scrollbar != SCROLLBAR_OFF &&
+        list_get_nb_lines(lists, SCREEN_MAIN) < lists->nb_items)
+        lists->scrollbar_tick = current_tick ? current_tick : 1;
+}
+
+/* fade step t ticks after the last scroll */
+static int scrollbar_fade_at(long t)
+{
+    if (t < LIST_SCROLLBAR_SHOW)
+        return 0;
+    t -= LIST_SCROLLBAR_SHOW;
+    if (t >= LIST_SCROLLBAR_FADE)
+        return GUI_SCROLLBAR_FADE_STEPS;
+    return 1 + t * (GUI_SCROLLBAR_FADE_STEPS - 1) / LIST_SCROLLBAR_FADE;
+}
+
+int gui_synclist_scrollbar_fade(struct gui_synclist *lists, int *delay)
+{
+    long t = current_tick - lists->scrollbar_tick;
+    int fade = lists->scrollbar_tick ? scrollbar_fade_at(t)
+                                     : GUI_SCROLLBAR_FADE_STEPS;
+    if (delay)
+    {
+        int d = -1;
+        if (fade < GUI_SCROLLBAR_FADE_STEPS)
+        {
+            d = (fade == 0) ? LIST_SCROLLBAR_SHOW - t : 1;
+            while (scrollbar_fade_at(t + d) == fade)
+                d++;
+        }
+        *delay = d;
+    }
+    return fade;
+}
+#endif
+
 /*
  * Magic to make sure the list gets updated correctly if the skin does
  * something naughty like a full screen update when we are in a button
@@ -696,6 +793,9 @@ bool gui_synclist_do_button(struct gui_synclist * lists, int *actionptr)
         case ACTION_STD_PREV:
 
             gui_list_select_at_offset(lists, -next_item_modifier, allow_wrap);
+#ifdef IPOD_6G
+            list_scrollbar_touch(lists);
+#endif
 #ifndef HAVE_WHEEL_ACCELERATION
             if (button_queue_count() < FRAMEDROP_TRIGGER)
 #endif
@@ -709,6 +809,9 @@ bool gui_synclist_do_button(struct gui_synclist * lists, int *actionptr)
             /*Fallthrough*/
         case ACTION_STD_NEXT:
             gui_list_select_at_offset(lists, next_item_modifier, allow_wrap);
+#ifdef IPOD_6G
+            list_scrollbar_touch(lists);
+#endif
 #ifndef HAVE_WHEEL_ACCELERATION
             if (button_queue_count() < FRAMEDROP_TRIGGER)
 #endif
@@ -762,6 +865,9 @@ bool gui_synclist_do_button(struct gui_synclist * lists, int *actionptr)
 #endif
                                           SCREEN_MAIN;
             gui_synclist_select_previous_page(lists, screen, false);
+#ifdef IPOD_6G
+            list_scrollbar_touch(lists);
+#endif
             gui_synclist_draw(lists);
             yield();
             *actionptr = ACTION_STD_NEXT;
@@ -777,12 +883,18 @@ bool gui_synclist_do_button(struct gui_synclist * lists, int *actionptr)
 #endif
                                           SCREEN_MAIN;
             gui_synclist_select_next_page(lists, screen, false);
+#ifdef IPOD_6G
+            list_scrollbar_touch(lists);
+#endif
             gui_synclist_draw(lists);
             yield();
             *actionptr = ACTION_STD_PREV;
         }
         return true;
     }
+#ifdef IPOD_6G
+    list_scrollbar_update(lists);
+#endif
     if(lists->scheduled_talk_tick
        && TIME_AFTER(current_tick, lists->scheduled_talk_tick))
         /* scheduled postponed item announcement is due */
@@ -806,6 +918,13 @@ int list_do_action_timeout(struct gui_synclist *lists, int timeout)
         if(timeout > delay || timeout == TIMEOUT_BLOCK)
             timeout = delay;
     }
+#ifdef IPOD_6G
+    /* wake up for the next fade step of the scrollbar */
+    int fade_delay;
+    gui_synclist_scrollbar_fade(lists, &fade_delay);
+    if (fade_delay >= 0 && (timeout > fade_delay || timeout == TIMEOUT_BLOCK))
+        timeout = fade_delay;
+#endif
     return timeout;
 }
 

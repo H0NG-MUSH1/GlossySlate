@@ -264,6 +264,23 @@ int show_logo_boot( void )
     else
         lcd_putsxy((LCD_WIDTH/2) - (ver_w/2), 0, version);
     lcd_bmp(&bm_rockboxlogo, (LCD_WIDTH - BMPWIDTH_rockboxlogo) / 2, 16);
+#elif defined(IPOD_6G)
+    /* fork: the logo is a picture of the whole screen (320 x 240), so it
+     * starts at the top instead of 10 px down; the version lies over its
+     * dark lower edge, white and without a box */
+    {
+        unsigned fg = lcd_get_foreground();
+        lcd_bmp(&bm_rockboxlogo, (LCD_WIDTH - BMPWIDTH_rockboxlogo) / 2,
+                (LCD_HEIGHT - BMPHEIGHT_rockboxlogo) / 2);
+        lcd_set_foreground(LCD_WHITE);
+        lcd_set_drawmode(DRMODE_FG);
+        if (ver_w > LCD_WIDTH)
+            lcd_putsxy(0, LCD_HEIGHT - font_h - 6, rbversion);
+        else
+            lcd_putsxy((LCD_WIDTH/2) - (ver_w/2), LCD_HEIGHT - font_h - 6, version);
+        lcd_set_drawmode(DRMODE_SOLID);
+        lcd_set_foreground(fg);
+    }
 #else
     lcd_bmp(&bm_rockboxlogo, (LCD_WIDTH - BMPWIDTH_rockboxlogo) / 2, 10);
     if (ver_w > LCD_WIDTH)

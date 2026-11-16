@@ -375,6 +375,10 @@ static void button_tick(void)
                         }
                         else
 #endif
+#ifdef HAVE_MIKEY_REMOTE
+                        /* the inline remote does not light the display */
+                        if (!(btn & BUTTON_MULTIMEDIA))
+#endif
                         {
                             backlight_on();
                             buttonlight_on();
@@ -390,6 +394,16 @@ static void button_tick(void)
                         skip_remote_release = remote_keypress_filter_fn(btn, data);
                         remote_backlight_on();
                     }
+                    else
+#endif
+#ifdef HAVE_MIKEY_REMOTE
+                    /* The inline remote (play/pause, skip, volume) works
+                     * without lighting the display, like the original
+                     * firmware, in every screen; nor is its first press
+                     * eaten to light it ("first keypress enables backlight
+                     * only"). */
+                    if (btn & BUTTON_MULTIMEDIA)
+                        skip_release = filter_first_keypress_disabled(btn, data);
                     else
 #endif
                     {

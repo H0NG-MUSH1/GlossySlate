@@ -27,4 +27,10 @@ void backlight_hw_brightness(int brightness);
 
 void backlight_hw_kill(void);
 
+void backlight_hw_hold_screen(bool hold);
+void backlight_hw_wait_for_fade_out(void);
+
+void backlight_hw_frame_ready(void);
+bool backlight_hw_frame_pending(void);
+
 #endif

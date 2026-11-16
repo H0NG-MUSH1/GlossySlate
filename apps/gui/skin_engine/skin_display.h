@@ -34,6 +34,12 @@ void draw_playlist_viewer_list(struct gui_wps *gwps, struct playlistviewer *view
 /* clears the area where the image was shown */
 void clear_image_pos(struct gui_wps *gwps, struct gui_img *img);
 void wps_display_images(struct gui_wps *gwps, struct viewport* vp);
+#ifdef IPOD_6G
+void wps_display_images_over(struct gui_wps *gwps, struct viewport* vp);
+void wps_images_over(bool over);
+/* while on, skin_render_viewport() writes every line (skinned list rows) */
+void skin_render_write_all_lines(bool on);
+#endif
 
 
 void skin_render_viewport(struct skin_element* viewport, struct gui_wps *gwps,

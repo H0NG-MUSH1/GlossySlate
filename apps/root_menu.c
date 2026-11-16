@@ -46,11 +46,16 @@
 /* gui api */
 #include "list.h"
 #include "splash.h"
+#ifdef IPOD_6G
+#include "popup.h"
+#endif
 #include "action.h"
 #include "yesno.h"
 #include "viewport.h"
 
 #include "tree.h"
+#include "dir.h"
+#include "filetypes.h"
 #if CONFIG_TUNER
 #include "radio.h"
 #endif
@@ -109,6 +114,174 @@ static void rootmenu_track_changed_callback(unsigned short id, void* param)
     struct mp3entry *id3 = ((struct track_event *)param)->id3;
     strmemccpy(current_track_path, id3->path, MAX_PATH);
 }
+#ifdef IPOD_6G
+/* A file the browser does not show: names starting with a dot (macOS puts
+ * a "._name" companion next to files it writes, which ends in .m3u8 or .mp3
+ * as well) and hidden files */
+static bool file_hidden(const struct dirent *entry, const struct dirinfo *info)
+{
+    return entry->d_name[0] == '.' || (info->attribute & ATTR_HIDDEN);
+}
+
+/* Playlists of the playlist catalogue: the playlist files in its directory,
+ * as "Playlists" in the main menu shows them */
+static int count_playlists(void)
+{
+    const char *dir = global_settings.playlist_catalog_dir[0] ?
+        (const char *)global_settings.playlist_catalog_dir :
+        PLAYLIST_CATALOG_DEFAULT_DIR;
+    DIR *d = opendir(dir);
+    if (!d)
+        return 0;
+
+    int count = 0;
+    struct dirent *entry;
+    while ((entry = readdir(d)))
+    {
+        struct dirinfo info = dir_get_info(d, entry);
+        if (!(info.attribute & ATTR_DIRECTORY) && !file_hidden(entry, &info) &&
+            (filetype_get_attr(entry->d_name) & FILE_ATTR_MASK) == FILE_ATTR_M3U)
+            count++;
+    }
+    closedir(d);
+    return count;
+}
+
+/* Recordings: the audio files in the recording directory, where the
+ * recording screen puts them */
+static int count_recordings(void)
+{
+#ifdef HAVE_RECORDING
+    const char *dir = global_settings.rec_directory[0] ?
+        (const char *)global_settings.rec_directory : REC_BASE_DIR;
+    DIR *d = opendir(dir);
+    if (!d)
+        return 0;
+
+    int count = 0;
+    struct dirent *entry;
+    while ((entry = readdir(d)))
+    {
+        struct dirinfo info = dir_get_info(d, entry);
+        if (!(info.attribute & ATTR_DIRECTORY) && !file_hidden(entry, &info) &&
+            (filetype_get_attr(entry->d_name) & FILE_ATTR_MASK) == FILE_ATTR_AUDIO)
+            count++;
+    }
+    closedir(d);
+    return count;
+#else
+    return -1;
+#endif
+}
+
+/* Bookmarks of "Recent Bookmarks": the lines of its file that hold one */
+static int count_recent_bookmarks(void)
+{
+    int fd = open(ROCKBOX_DIR "/most-recent.bmark", O_RDONLY);
+    if (fd < 0)
+        return 0;
+
+    char buf[256];
+    int count = 0;
+    bool line_start = true;
+    ssize_t n;
+    while ((n = read(fd, buf, sizeof(buf))) > 0)
+    {
+        for (ssize_t i = 0; i < n; i++)
+        {
+            if (line_start && buf[i] == '>')
+                count++;
+            line_start = (buf[i] == '\n');
+        }
+    }
+    close(fd);
+    return count;
+}
+#endif
+
+#ifdef IPOD_6G
+/* The counts of playlists, bookmarks and recordings, -1 when they must be
+ * done again: whenever the main menu shows (they change in other screens:
+ * file browser, playlist catalogue, bookmark list, recording screen, USB),
+ * when "Recent Bookmarks" is written (stopping playback, also in the main
+ * menu), after every file operation of the browser (fileop.c: delete,
+ * rename, copy, move, new folder) and when a playlist is created, added to
+ * or saved (playlist_catalog.c, playlist_save()). */
+static int file_count[3] = { -1, -1, -1 };
+
+void root_menu_media_count_changed(int which)
+{
+    for (int i = 0; i < 3; i++)
+    {
+        if (which < 0 || which == MEDIA_COUNT_PLAYLISTS + i)
+            file_count[i] = -1;
+    }
+}
+#endif
+
+int root_menu_media_count(int which)
+{
+#ifdef IPOD_6G
+    if (which == MEDIA_COUNT_SHORTCUTS)
+        return shortcuts_get_count(); /* in memory since boot */
+    if (which >= MEDIA_COUNT_PLAYLISTS && which <= MEDIA_COUNT_RECORDINGS)
+    {
+        int i = which - MEDIA_COUNT_PLAYLISTS;
+        if (file_count[i] < 0)
+            file_count[i] = i == 0 ? count_playlists() :
+                            i == 1 ? count_recent_bookmarks() :
+                                     count_recordings();
+        return file_count[i];
+    }
+#endif
+#if defined(HAVE_TAGCACHE) && defined(IPOD_6G)
+    /* albums of the media type in the database, -1 while it is not ready */
+    switch (which)
+    {
+        case MEDIA_COUNT_ALBUMS:
+            return tagcache_count_albums(TAGCACHE_MEDIA_MUSIC);
+        case MEDIA_COUNT_PODCASTS:
+            return tagcache_count_albums(TAGCACHE_MEDIA_PODCAST);
+        case MEDIA_COUNT_AUDIOBOOKS:
+            return tagcache_count_albums(TAGCACHE_MEDIA_AUDIOBOOK);
+    }
+#endif
+    (void)which;
+    return -1;
+}
+
+#if defined(HAVE_TAGCACHE) && defined(IPOD_6G)
+/* "Musik", "Podcasts" and "Hörbücher" share the database browser. The
+ * latter two open their item of the database root menu and "back" from its
+ * list returns to the main menu (docs/ipod6g-database-media-types.md).
+ * Each continues where its last visit ended; after a visit of another one,
+ * "Musik" starts at the root menu. */
+static bool db_browser_open(struct tree_context *tc, int screen)
+{
+    static int last_db_screen = GO_TO_DBBROWSER;
+    const char *entry = NULL;
+
+    if (screen == GO_TO_PODCASTS)
+        entry = TAGNAVI_PODCASTS;
+    else if (screen == GO_TO_AUDIOBOOKS)
+        entry = TAGNAVI_AUDIOBOOKS;
+
+    if (!entry)
+    {
+        if (last_db_screen != GO_TO_DBBROWSER)
+            tagtree_open_root(tc);
+    }
+    else if (!tagtree_open_root_entry(tc, entry))
+    {
+        splashf(HZ*3, "%s\n%s", entry, ROCKBOX_DIR "/tagnavi.config");
+        return false;
+    }
+    last_db_screen = screen;
+    tree_set_id3db_exit_level(entry ? 1 : 0);
+    return true;
+}
+#endif
+
 static int browser(void* param)
 {
     int ret_val;
@@ -174,6 +347,8 @@ static int browser(void* param)
         break;
 #ifdef HAVE_TAGCACHE
         case GO_TO_DBBROWSER:
+        case GO_TO_PODCASTS:
+        case GO_TO_AUDIOBOOKS:
             if (!tagcache_is_usable())
             {
                 bool reinit_attempted = false;
@@ -212,7 +387,9 @@ static int browser(void* param)
                         static const struct text_message message={lines, 2};
                         if(gui_syncyesno_run(&message, NULL, NULL) == YESNO_NO)
                             break;
+#if !(defined(IPOD_6G) && GS_POPUPS)
                         clear_screen_buffer(false);
+#endif /* the popup put the list back, it stays under the progress */
 
                         /* Start initialisation */
                         tagcache_rebuild();
@@ -280,6 +457,15 @@ static int browser(void* param)
             last_ft_dirlevel = tc->dirlevel;
             tc->dirlevel = last_db_dirlevel;
             tc->selected_item = last_db_selection;
+#ifdef IPOD_6G
+            if (!db_browser_open(tc, (intptr_t)param))
+            {
+                last_db_dirlevel = tc->dirlevel;
+                last_db_selection = tc->selected_item;
+                tc->dirlevel = last_ft_dirlevel;
+                return GO_TO_PREVIOUS;
+            }
+#endif
             push_current_activity(ACTIVITY_DATABASEBROWSER);
         break;
 #endif /*HAVE_TAGCACHE*/
@@ -313,9 +499,12 @@ static int browser(void* param)
         break;
 #ifdef HAVE_TAGCACHE
         case GO_TO_DBBROWSER:
+        case GO_TO_PODCASTS:
+        case GO_TO_AUDIOBOOKS:
             last_db_dirlevel = tc->dirlevel;
             last_db_selection = tc->selected_item;
             tc->dirlevel = last_ft_dirlevel;
+            tree_set_id3db_exit_level(0);
         break;
 #endif
     }
@@ -475,6 +664,8 @@ static const struct root_items items[] = {
     [GO_TO_FILEBROWSER] =   { browser, (void*)GO_TO_FILEBROWSER, &file_menu},
 #ifdef HAVE_TAGCACHE
     [GO_TO_DBBROWSER] =     { browser, (void*)GO_TO_DBBROWSER, &tagcache_menu },
+    [GO_TO_PODCASTS] =      { browser, (void*)GO_TO_PODCASTS, &tagcache_menu },
+    [GO_TO_AUDIOBOOKS] =    { browser, (void*)GO_TO_AUDIOBOOKS, &tagcache_menu },
 #endif
     [GO_TO_WPS] =           { wpsscrn, NULL, &playback_settings },
     [GO_TO_MAINMENU] =      { miscscrn, (struct menu_item_ex*)&main_menu_,
@@ -509,8 +700,27 @@ MENUITEM_RETURNVALUE(shortcut_menu, ID2P(LANG_SHORTCUTS), GO_TO_SHORTCUTMENU,
 MENUITEM_RETURNVALUE(file_browser, ID2P(LANG_DIR_BROWSER), GO_TO_FILEBROWSER,
                         NULL, Icon_file_view_menu);
 #ifdef HAVE_TAGCACHE
+#ifdef IPOD_6G
+/* "Music" (in German "Musik"); the settings keep "Database" */
+MENUITEM_RETURNVALUE(db_browser, ID2P(LANG_FILTER_MUSIC), GO_TO_DBBROWSER,
+                        NULL, Icon_Audio);
+#else
 MENUITEM_RETURNVALUE(db_browser, ID2P(LANG_TAGCACHE), GO_TO_DBBROWSER,
                         NULL, Icon_Audio);
+#endif
+#endif
+#ifdef HAVE_TAGCACHE
+#ifdef HAVE_REMOTE_LCD
+#define ICON_AUDIOBOOKS Icon_Voice
+#else
+/* Without a remote display its menu icon is never shown, so iconsets can
+ * draw a book in its place. */
+#define ICON_AUDIOBOOKS Icon_Remote_Display_menu
+#endif
+MENUITEM_RETURNVALUE(podcasts_browser, ID2P(LANG_PODCASTS), GO_TO_PODCASTS,
+                        NULL, Icon_Recording);
+MENUITEM_RETURNVALUE(audiobooks_browser, ID2P(LANG_AUDIOBOOKS),
+                        GO_TO_AUDIOBOOKS, NULL, ICON_AUDIOBOOKS);
 #endif
 MENUITEM_RETURNVALUE(rocks_browser, ID2P(LANG_PLUGINS), GO_TO_BROWSEPLUGINS,
                         NULL, Icon_Plugin);
@@ -553,6 +763,8 @@ static struct menu_table menu_table[] = {
     { "files", &file_browser },
 #ifdef HAVE_TAGCACHE
     { "database", &db_browser },
+    { "podcasts", &podcasts_browser },
+    { "audiobooks", &audiobooks_browser },
 #endif
     { "wps", &wps_item },
     { "settings", &menu_ },
@@ -958,6 +1170,9 @@ void root_menu(void)
                 if (last_screen != GO_TO_ROOT)
                     selected = get_selection(last_screen);
                 global_status.last_screen = GO_TO_ROOT; /* We've returned to ROOT */
+#ifdef IPOD_6G
+                root_menu_media_count_changed(-1); /* counted anew */
+#endif
                 /* When we are in the main menu we want the hardware BACK
                  * button to be handled by HOST instead of rockbox */
                 ignore_back_button_stub(true);
@@ -972,6 +1187,8 @@ void root_menu(void)
 #ifdef HAVE_TAGCACHE
             case GO_TO_DBBROWSER:
 #endif
+            case GO_TO_PODCASTS:
+            case GO_TO_AUDIOBOOKS:
             case GO_TO_FILEBROWSER:
             case GO_TO_PLAYLISTS_SCREEN:
                 global_status.last_browser = previous_browser = next_screen;

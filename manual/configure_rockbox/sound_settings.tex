@@ -574,15 +574,15 @@ experience with more complex audio. See \reference{sec:pitchscreen} for more
 details about how to use the feature.
 }
 
-\section{Haas Surround}
+\section{Haas Stereo Widening}
 This setting implements the Haas effect with adjustable delay time to enhance
 the stereo effect of the sound. A full range Haas effect creates the impression
 that sound  starts from one channel and ends in the other.  Therefore, four additional
 functions are provided to move the stage back to the center:
 \setting{Balance} to change the left-right channel output ratio.
-A bypass band for frequencies that mostly contain vocals, using \setting{f(x1)},
-and \setting{f(x2)} to set frequencies which are not affected. The \setting{SIDE ONLY}
-setting uses mid-side processing to determine and apply effect to the side channel only.
+A bypass band for frequencies that mostly contain vocals, using \setting{Upper Bypass Frequency},
+and \setting{Lower Bypass Frequency} to set frequencies which are not affected. The
+\setting{Process Side Channel Only} setting uses mid-side processing to determine and apply effect to the side channel only.
 Finally, the \setting{Dry/Wet Mix} setting adjusts the proportion mixed from the
 original (dry) and 'effected' (wet) signals.
 
@@ -593,13 +593,14 @@ negative overall gain to prevent possible audio distortion due to the EQ
 gain.  The defult precut value is set to $-2.5$~dB and can be adjust from 0 dB to $-4.5$~dB.
 Note that this effect will stack with any other EQ applied.
 
-\section{Auditory Fatigue Reduction}
+\section{Presence/Treble Attenuation}
 Human hearing is more senstive to some frequency bands. This setting applies additional
 equalization and bi-shelf filtering to reduce signals in these bands to minimize
 the chance that temporary threshold shift (auditory fatigue) occurs.
 
-\section{Compressor}
-The \setting{Compressor} reduces, or compresses, the dynamic range of the audio
+\section{Dynamic Range Compressor}
+The \setting{Dynamic Range Compressor} reduces, or compresses, the dynamic
+range of the audio
 signal.  This makes the quieter and louder sections closer to the same volume
 level by progressively reducing the gain of louder signals.  When subsequently
 amplified, this has the effect of making the quieter sections louder while
@@ -623,7 +624,7 @@ Makeup Gain in Auto restores the signal to the maximum possible level and
 brings the quieter audio up with it.  This is what makes it possible to hear
 the quieter audio in noisy environments.
 
-The \setting{Ratio} setting determines how aggressively the compressor reduces
+The \setting{Compression Ratio} setting determines how aggressively the compressor reduces
 gain above the threshold.  For example, the 2:1 setting means that for each
 two decibels of input signal above the threshold, the compressor will only
 allow the output to appear as one decibel.  The higher the ratio, the harder

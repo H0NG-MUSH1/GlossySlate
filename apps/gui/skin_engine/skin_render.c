@@ -41,6 +41,9 @@
 #include "radio.h"
 #endif
 #include "viewport.h"
+#ifdef IPOD_6G
+#include "statusbar-skinned.h"
+#endif
 #include "cuesheet.h"
 #include "language.h"
 #include "playback.h"
@@ -70,9 +73,25 @@ struct skin_draw_info {
     size_t buf_size;
 
     int offset; /* used by the playlist viewer */
+
+    /* Bars of the current line, drawn by draw_line_bars() after the line
+     * is written: write_line() clears the whole line and would wipe out a
+     * bar drawn before it, e.g. when a conditional switches to a branch
+     * with a bar (the bar then flashed as an empty line). */
+    struct progressbar *line_bars[4];
+    int nb_line_bars;
 };
 
 extern void sb_set_info_vp(enum screen_type screen, OFFSETTYPE(char*) label);
+
+/* Draws the bars that the current line collected, see line_bars */
+static void draw_line_bars(struct skin_draw_info *info)
+{
+    for (int i = 0; i < info->nb_line_bars; i++)
+        draw_progressbar(info->gwps, info->skin_vp, info->line_number,
+                         info->line_bars[i]);
+    info->nb_line_bars = 0;
+}
 
 typedef bool (*skin_render_func)(struct skin_element* alternator, struct skin_draw_info *info);
 bool skin_render_alternator(struct skin_element* alternator, struct skin_draw_info *info);
@@ -83,6 +102,70 @@ static void skin_render_playlistviewer(struct playlistviewer* viewer,
                                        unsigned long refresh_type);
 
 static char* skin_buffer;
+/* A disappearing viewport can cover viewports that were rendered earlier.
+ * Repaint them before the completed frame is sent to the LCD. */
+static bool hidden_viewport_cleared;
+static bool repainting_after_hide;
+#ifdef IPOD_6G
+/* Hiding a %VB viewport fills its area of the backdrop buffer with the
+ * background colour, and a hidden foreground viewport is cleared with the
+ * backdrop buffer. When the backdrop viewport is hidden first, the
+ * foreground ones take that background colour onto the screen, and a newly
+ * shown backdrop viewport never reaches those areas (they are not drawn
+ * again). So the repaint after hiding draws the backdrop layer first, then
+ * clears the areas of all viewports hidden in this frame from the finished
+ * backdrop, then draws the foreground. */
+#define MAX_HIDDEN_AREAS 24
+static struct viewport hidden_areas[MAX_HIDDEN_AREAS];
+static int nb_hidden_areas;
+static bool hidden_areas_overflow;
+/* which viewports skin_render() draws: 1 backdrop layer, 2 the others */
+static int render_layers = 3;
+
+/* Copies the backdrop buffer to the screen around the UI viewport ui
+ * (everywhere if there is none or it is the hidden 1 x 1 one): the areas
+ * where the UI does not draw itself. */
+static void backdrop_around(struct screen *display, const struct viewport *ui)
+{
+    static struct viewport v;
+    const int W = display->lcdwidth, H = display->lcdheight;
+    int r[4][4], n = 0;
+
+    if (!ui || ui->width <= 1 || ui->height <= 1)
+    {
+        r[n][0] = 0; r[n][1] = 0; r[n][2] = W; r[n++][3] = H;
+    }
+    else
+    {
+        const int x1 = ui->x + ui->width, y1 = ui->y + ui->height;
+        r[n][0] = 0; r[n][1] = 0; r[n][2] = W; r[n++][3] = ui->y;
+        r[n][0] = 0; r[n][1] = y1; r[n][2] = W; r[n++][3] = H - y1;
+        r[n][0] = 0; r[n][1] = ui->y; r[n][2] = ui->x; r[n++][3] = ui->height;
+        r[n][0] = x1; r[n][1] = ui->y; r[n][2] = W - x1; r[n++][3] = ui->height;
+    }
+    viewport_set_fullscreen(&v, display->screen_type);
+    for (int i = 0; i < n; i++)
+    {
+        if (r[i][2] <= 0 || r[i][3] <= 0)
+            continue;
+        v.x = r[i][0]; v.y = r[i][1]; v.width = r[i][2]; v.height = r[i][3];
+        display->set_viewport_ex(&v, VP_FLAG_VP_SET_CLEAN);
+        display->clear_viewport();
+    }
+}
+
+/* the UI viewport of the skin of gwps */
+static struct viewport *skin_ui_viewport(struct gui_wps *gwps,
+                                         struct wps_data *data)
+{
+    enum screen_type screen = gwps->display->screen_type;
+    if (gwps == skin_get_gwps(CUSTOM_STATUSBAR, screen))
+        return sb_skin_peek_info_vp(screen);
+    struct skin_viewport *svp =
+        skin_find_item(VP_DEFAULT_LABEL_STRING, SKIN_FIND_UIVP, data);
+    return svp ? &svp->vp : NULL;
+}
+#endif
 
 static inline struct skin_element*
 get_child(OFFSETTYPE(struct skin_element**) children, int child)
@@ -91,6 +174,72 @@ get_child(OFFSETTYPE(struct skin_element**) children, int child)
     return SKINOFFSETTOPTR(skin_buffer, kids[child]);
 }
 
+
+#ifdef IPOD_6G
+/* skinlist_draw() draws the rows of a skinned list (%Lb) onto a cleared
+ * area, one after the other with the same skin elements. A line is only
+ * written when its conditionals changed since the element was rendered
+ * last, i.e. since the row before. After a wrap from the last item to the
+ * first, the first row was selected like the last one drawn before it, and
+ * its lines without text (the ends of the selection bar, the check mark)
+ * stayed empty. So every line is written while this is on. */
+static bool write_all_lines;
+void skin_render_write_all_lines(bool on)
+{
+    write_all_lines = on;
+}
+#endif
+
+#if defined(IPOD_6G) && !defined(__PCTOOL__)
+/* A %dr gradient from the 24 bit colours of the skin, dithered to RGB565
+ * (4 x 4, anchored to the screen). The firmware gradient interpolates the
+ * RGB565 end colours and truncates every row: on a flat gradient the
+ * channels then step at different rows, white to #F4F6F8 shows a pink band
+ * and ends bluish. Drawn a row at a time into the current viewport (the
+ * backdrop layer for %VB). */
+static void draw_gradient_dithered(struct screen *display, struct viewport *vp,
+                                   const struct draw_rectangle *rect)
+{
+    static const unsigned char bayer[4][4] = {
+        {   8, 136,  40, 168 }, { 200,  72, 232, 104 },
+        {  56, 184,  24, 152 }, { 248, 120, 216,  88 },
+    };
+    static fb_data row[LCD_WIDTH];
+    int x0 = rect->x, w = rect->width, h = rect->height;
+    if (x0 < 0)
+    {
+        w += x0;
+        x0 = 0;
+    }
+    w = MIN(w, MIN(vp->width - x0, LCD_WIDTH));
+    if (w <= 0 || h <= 0)
+        return;
+
+    int sr = (rect->start_rgb >> 16) & 0xff, er = (rect->end_rgb >> 16) & 0xff;
+    int sg = (rect->start_rgb >> 8) & 0xff, eg = (rect->end_rgb >> 8) & 0xff;
+    int sb = rect->start_rgb & 0xff, eb = rect->end_rgb & 0xff;
+    for (int i = 0; i < h; i++)
+    {
+        int y = rect->y + i;
+        if (y < 0 || y >= vp->height)
+            continue;
+        /* colour in the middle of the row, in 1/256 of an RGB565 step */
+        int num = 2 * i + 1, den = 2 * h;
+        int r = ((sr * den + (er - sr) * num) * 31 * 256) / (255 * den);
+        int g = ((sg * den + (eg - sg) * num) * 63 * 256) / (255 * den);
+        int b = ((sb * den + (eb - sb) * num) * 31 * 256) / (255 * den);
+        int ay = vp->y + y;
+        for (int k = 0; k < w; k++)
+        {
+            int t = bayer[ay & 3][(vp->x + x0 + k) & 3];
+            row[k] = (fb_data)((MIN((r + t) >> 8, 31) << 11) |
+                               (MIN((g + t) >> 8, 63) << 5) |
+                                MIN((b + t) >> 8, 31));
+        }
+        display->bitmap_part(row, 0, 0, w, x0, y, w, 1);
+    }
+}
+#endif
 
 static bool do_non_text_tags(struct gui_wps *gwps, struct skin_draw_info *info,
                              struct skin_element *element)
@@ -165,7 +314,14 @@ static bool do_non_text_tags(struct gui_wps *gwps, struct skin_draw_info *info,
                     if (skinvp->label == VP_DEFAULT_LABEL)
                         vplabel = VP_DEFAULT_LABEL_STRING;
                     if (vplabel && !skinvp->is_infovp &&
+#if defined(IPOD_6G) && !defined(__PCTOOL__)
+                        /* labels interned at load (skin_parser.c) */
+                        (skinvp->label == VP_DEFAULT_LABEL ?
+                         !strcmp(vplabel, label) :
+                         skinvp->label == token->value.data))
+#else
                         !strcmp(vplabel, label))
+#endif
                     {
                         if (skinvp->hidden_flags&VP_DRAW_HIDDEN)
                         {
@@ -196,6 +352,14 @@ static bool do_non_text_tags(struct gui_wps *gwps, struct skin_draw_info *info,
                 struct draw_rectangle *rect =
                         SKINOFFSETTOPTR(skin_buffer, token->value.data);
                 if (!rect) break;
+#if defined(IPOD_6G) && !defined(__PCTOOL__)
+                if (rect->start_rgb != rect->end_rgb &&
+                    gwps->display->screen_type == SCREEN_MAIN)
+                {
+                    draw_gradient_dithered(gwps->display, &skin_vp->vp, rect);
+                }
+                else
+#endif
 #ifdef HAVE_LCD_COLOR
                 if (rect->start_colour != rect->end_colour &&
                     gwps->display->screen_type == SCREEN_MAIN)
@@ -233,7 +397,12 @@ static bool do_non_text_tags(struct gui_wps *gwps, struct skin_draw_info *info,
         {
             struct progressbar *bar = (struct progressbar*)SKINOFFSETTOPTR(skin_buffer, token->value.data);
             if (do_refresh)
-                draw_progressbar(gwps, info->skin_vp, info->line_number, bar);
+            {
+                if (info->nb_line_bars < (int)ARRAYLEN(info->line_bars))
+                    info->line_bars[info->nb_line_bars++] = bar;
+                else
+                    draw_progressbar(gwps, info->skin_vp, info->line_number, bar);
+            }
         }
         break;
         case SKIN_TOKEN_IMAGE_DISPLAY:
@@ -305,6 +474,9 @@ static bool do_non_text_tags(struct gui_wps *gwps, struct skin_draw_info *info,
                     }
 #endif
                     aa->draw_handle = handle;
+#ifdef IPOD_6G
+                    aa->draw_fx = token->value.data;
+#endif
                 }
             }
             break;
@@ -415,8 +587,16 @@ static void do_tags_in_hidden_conditional(struct skin_element* branch,
                     char *vplabel = SKINOFFSETTOPTR(skin_buffer, skin_viewport->label);
                     if (skin_viewport->label == VP_DEFAULT_LABEL)
                         vplabel = VP_DEFAULT_LABEL_STRING;
+#if defined(IPOD_6G) && !defined(__PCTOOL__)
+                    /* labels interned at load (skin_parser.c) */
+                    if (vplabel && (skin_viewport->label == VP_DEFAULT_LABEL ?
+                                    strcmp(vplabel, label) != 0 :
+                                    skin_viewport->label != token->value.data))
+                        continue;
+#else
                     if (vplabel && strcmp(vplabel, label))
                         continue;
+#endif
                     if (skin_viewport->hidden_flags&VP_NEVER_VISIBLE)
                     {
                         continue;
@@ -448,6 +628,18 @@ static void do_tags_in_hidden_conditional(struct skin_element* branch,
                             gwps->display->clear_viewport();
                             gwps->display->set_viewport_ex(&info->skin_vp->vp, VP_FLAG_VP_SET_CLEAN);
 #endif
+                            hidden_viewport_cleared = true;
+#ifdef IPOD_6G
+                            if (nb_hidden_areas < MAX_HIDDEN_AREAS)
+                            {
+                                /* its area on the screen, not in the
+                                 * backdrop buffer */
+                                hidden_areas[nb_hidden_areas] = skin_viewport->vp;
+                                hidden_areas[nb_hidden_areas++].buffer = NULL;
+                            }
+                            else
+                                hidden_areas_overflow = true;
+#endif
                             skin_viewport->hidden_flags |= VP_DRAW_HIDDEN;
                         }
                     }
@@ -456,6 +648,11 @@ static void do_tags_in_hidden_conditional(struct skin_element* branch,
 #ifdef HAVE_ALBUMART
             else if (token->type == SKIN_TOKEN_ALBUMART_DISPLAY && data->albumart)
             {
+#ifdef IPOD_6G
+                struct skin_albumart *aa =
+                    SKINOFFSETTOPTR(skin_buffer, data->albumart);
+                aa->draw_fx = token->value.data;
+#endif
                 draw_album_art(gwps,
                         playback_current_aa_hid(data->playback_aa_slot), true);
             }
@@ -536,7 +733,17 @@ static bool skin_render_line(struct skin_element* line, struct skin_draw_info *i
                     {
                         /* we are in a false branch of a %?aa<true> conditional */
                         if (last_value == 0)
+                        {
                             do_tags_in_hidden_conditional(get_child(child->children, 0), info);
+#ifdef IPOD_6G
+                            /* its text has gone: write the line again, or
+                             * the old text stays (e.g. "-44 dB" under the
+                             * sidebar tile after going from Volume one menu
+                             * level up to Sound Settings) */
+                            needs_update = true;
+                            info->force_redraw = true;
+#endif
+                        }
                         break;
                     }
                 }
@@ -603,7 +810,17 @@ static bool skin_render_line(struct skin_element* line, struct skin_draw_info *i
                         }
                     }
                     else
+                    {
                         bufstart[0] = '\0';
+#ifdef IPOD_6G
+                        /* an empty result is a change too: without this the
+                         * line was not rewritten and its old text stayed
+                         * (e.g. the value of the previous setting under the
+                         * sidebar tile after moving to one without) */
+                        needs_update = needs_update ||
+                                ((child->tag->flags&info->refresh_type)!=0);
+#endif
+                    }
                 }
                 break;
             case TEXT:
@@ -764,6 +981,10 @@ void skin_render_viewport(struct skin_element* viewport, struct gui_wps *gwps,
 
     struct align_pos * align = &info.align;
     bool needs_update, update_all = false;
+#ifdef IPOD_6G
+    bool lines_written = false;
+    update_all = write_all_lines;
+#endif
     skin_buffer = get_skin_buffer(gwps->data);
     /* Set images to not to be displayed */
     struct skin_token_list *imglist = SKINOFFSETTOPTR(skin_buffer, gwps->data->images);
@@ -833,11 +1054,30 @@ void skin_render_viewport(struct skin_element* viewport, struct gui_wps *gwps,
             }
             write_line(display, align, info.line_number,
                     info.line_scrolls, &info.line_desc);
+#ifdef IPOD_6G
+            lines_written = true;
+#endif
         }
+        draw_line_bars(&info);
         if (!info.no_line_break)
             info.line_number++;
         line = SKINOFFSETTOPTR(skin_buffer, line->next);
     }
+#ifdef IPOD_6G
+    if (skin_viewport->output_to_backdrop_buffer)
+    {
+        /* backdrop layer: after a clear the images go over the fills and
+         * images before them. In between the layer keeps them; drawing them
+         * again would blend them a second time (darker edges), so only if a
+         * line was rewritten (it cleared its area), as before. Images whose
+         * frame a tag picks change with the next full update then. */
+        if ((refresh_type & SKIN_REFRESH_ALL) == SKIN_REFRESH_ALL)
+            wps_display_images_over(gwps, &skin_viewport->vp);
+        else if (lines_written)
+            wps_display_images(gwps, &skin_viewport->vp);
+        return;
+    }
+#endif
     wps_display_images(gwps, &skin_viewport->vp);
 }
 
@@ -852,6 +1092,25 @@ void skin_render(struct gui_wps *gwps, unsigned refresh_mode)
     char *label;
 
     int old_refresh_mode = refresh_mode;
+#ifdef IPOD_6G
+    /* The screen shows the backdrop buffer only where a viewport clears
+     * itself; elsewhere it keeps what was there: after another screen, a
+     * clear without backdrop or (WPS) a copy of the backdrop made before
+     * this update drew it. So a full update of a skin with a backdrop ends
+     * with the finished backdrop on the screen around its UI viewport, and
+     * the foreground drawn again over it. */
+    const bool layered_full = !repainting_after_hide &&
+        (refresh_mode&SKIN_REFRESH_ALL) == SKIN_REFRESH_ALL &&
+        data->backdrop_id >= 0;
+#endif
+    if (!repainting_after_hide)
+    {
+        hidden_viewport_cleared = false;
+#ifdef IPOD_6G
+        nb_hidden_areas = 0;
+        hidden_areas_overflow = false;
+#endif
+    }
     skin_buffer = get_skin_buffer(gwps->data);
 
     /* Framebuffer is likely dirty */
@@ -885,6 +1144,11 @@ void skin_render(struct gui_wps *gwps, unsigned refresh_mode)
         /* SETUP */
         skin_viewport = SKINOFFSETTOPTR(skin_buffer, viewport->data);
         if (!skin_viewport) continue;
+#ifdef IPOD_6G
+        if (!(render_layers &
+              (skin_viewport->output_to_backdrop_buffer ? 1 : 2)))
+            continue;
+#endif
         unsigned vp_refresh_mode = refresh_mode;
 #if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
         if (skin_viewport->output_to_backdrop_buffer)
@@ -913,6 +1177,26 @@ void skin_render(struct gui_wps *gwps, unsigned refresh_mode)
         {
             vp_refresh_mode = SKIN_REFRESH_ALL;
             skin_viewport->hidden_flags = VP_DRAW_HIDEABLE;
+#ifdef IPOD_6G
+            /* An appearing %VB viewport draws only into the backdrop
+             * buffer: copy its area to the screen after this frame, like
+             * the area of a hidden one. (At boot the first full update ran
+             * before the list had a selection, no sidebar was shown; the
+             * sidebar that appeared next stayed white except for the text
+             * lines.) */
+            if (skin_viewport->output_to_backdrop_buffer &&
+                !repainting_after_hide)
+            {
+                hidden_viewport_cleared = true;
+                if (nb_hidden_areas < MAX_HIDDEN_AREAS)
+                {
+                    hidden_areas[nb_hidden_areas] = skin_viewport->vp;
+                    hidden_areas[nb_hidden_areas++].buffer = NULL;
+                }
+                else
+                    hidden_areas_overflow = true;
+            }
+#endif
         }
 
         display->set_viewport_ex(&skin_viewport->vp, VP_FLAG_VP_SET_CLEAN);
@@ -927,9 +1211,57 @@ void skin_render(struct gui_wps *gwps, unsigned refresh_mode)
                                  skin_viewport, vp_refresh_mode);
         refresh_mode = old_refresh_mode;
     }
+    if (hidden_viewport_cleared && !repainting_after_hide)
+    {
+        hidden_viewport_cleared = false;
+        repainting_after_hide = true;
+#ifdef IPOD_6G
+        /* the backdrop layer, then the hidden areas from it, then the rest */
+        render_layers = 1;
+        skin_render(gwps, SKIN_REFRESH_ALL);
+        skin_backdrop_set_buffer(-1, skin_viewport);
+        skin_backdrop_show(data->backdrop_id);
+        if (hidden_areas_overflow)
+        {
+            display->set_viewport_ex(NULL, VP_FLAG_VP_SET_CLEAN);
+            display->clear_viewport();
+        }
+        else if (layered_full)
+            backdrop_around(display, skin_ui_viewport(gwps, data));
+        else
+        {
+            for (int i = 0; i < nb_hidden_areas; i++)
+            {
+                display->set_viewport_ex(&hidden_areas[i], VP_FLAG_VP_SET_CLEAN);
+                display->clear_viewport();
+            }
+        }
+        nb_hidden_areas = 0;
+        hidden_areas_overflow = false;
+        render_layers = 2;
+        skin_render(gwps, SKIN_REFRESH_ALL);
+        render_layers = 3;
+#else
+        skin_render(gwps, SKIN_REFRESH_ALL);
+#endif
+        repainting_after_hide = false;
+        return;
+    }
 #if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && (LCD_REMOTE_DEPTH > 1))
     skin_backdrop_set_buffer(-1, skin_viewport);
     skin_backdrop_show(data->backdrop_id);
+#endif
+#ifdef IPOD_6G
+    if (layered_full)
+    {
+        backdrop_around(display, skin_ui_viewport(gwps, data));
+        repainting_after_hide = true;
+        render_layers = 2;
+        skin_render(gwps, SKIN_REFRESH_ALL);
+        render_layers = 3;
+        repainting_after_hide = false;
+        return;
+    }
 #endif
 
     if (((refresh_mode&SKIN_REFRESH_ALL) == SKIN_REFRESH_ALL))
@@ -1024,6 +1356,7 @@ void skin_render_playlistviewer(struct playlistviewer* viewer,
             write_line(display, align, info.line_number,
                     info.line_scrolls, &info.line_desc);
         }
+        draw_line_bars(&info);
         info.line_number++;
         info.offset++;
         start_item++;

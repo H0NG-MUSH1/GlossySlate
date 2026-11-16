@@ -1716,17 +1716,9 @@ static int get_next_index(const struct playlist_info* playlist, int steps,
     if (repeat_mode == -1)
         repeat_mode = global_settings.repeat_mode;
 
-    if (repeat_mode == REPEAT_SHUFFLE && playlist->amount <= 1)
-    {
-        repeat_mode = REPEAT_ALL;
-    }
-
     steps = calculate_step_count(playlist, steps);
     switch (repeat_mode)
     {
-        case REPEAT_SHUFFLE:
-            /* Treat repeat shuffle just like repeat off.  At end of playlist,
-               play will be resumed in playlist_next() */
         case REPEAT_OFF:
         {
             current_index = rotate_index(playlist, current_index);
@@ -2143,9 +2135,6 @@ bool playlist_check(int steps)
 
     int index = get_next_index(playlist, steps, -1);
 
-    if (index < 0 && steps >= 0 && global_settings.repeat_mode == REPEAT_SHUFFLE)
-        index = get_next_index(playlist, steps, REPEAT_ALL);
-
     return (index >= 0);
 }
 
@@ -2249,6 +2238,14 @@ int playlist_directory_tracksearch(const char* dirname, bool recurse,
         }
 
         struct entry *files = core_get_data(cache->entries_handle);
+#ifdef IPOD_6G
+        /* The tree is loaded with SHOW_ALL, so the browser's filter of dot
+         * files does not apply: skip them here. macOS writes a "._name"
+         * companion (no audio) next to every file it copies, and folders
+         * like ".Trashes"; they ended up in playlists and did not play. */
+        if (files[i].name[0] == '.')
+            continue;
+#endif
         if (files[i].attr & ATTR_DIRECTORY)
         {
             if (recurse)
@@ -2965,20 +2962,7 @@ int playlist_next(int steps)
     if (index < 0)
     {
         /* end of playlist... or is it */
-        if (repeat_mode == REPEAT_SHUFFLE && playlist->amount > 1)
-        {
-            /* Repeat shuffle mode.  Re-shuffle playlist and resume play */
-            playlist->first_index = 0;
-            sort_playlist_unlocked(playlist, false, false);
-            randomise_playlist_unlocked(playlist, 0, false, true);
-            global_settings.playlist_shuffle = true;
-            iap_on_shuffle_state(global_settings.playlist_shuffle);
-
-            playlist->started = true;
-            playlist->index = 0;
-            index = 0;
-        }
-        else if (global_settings.next_folder && playlist_allow_dirplay(playlist))
+        if (global_settings.next_folder && playlist_allow_dirplay(playlist))
         {
             /* we switch playlists here */
             index = create_and_play_dir(steps, true);
@@ -4172,5 +4156,9 @@ error:
     if (reload_tracks && playlist->started &&
         (audio_status() & AUDIO_STATUS_PLAY))
         audio_flush_and_reload_tracks();
+#ifdef IPOD_6G
+    /* a playlist file may be new: the main menu sidebar counts anew */
+    root_menu_media_count_changed(MEDIA_COUNT_PLAYLISTS);
+#endif
     return rc;
 }

@@ -155,6 +155,12 @@ struct draw_rectangle {
     int16_t height;
     unsigned start_colour;
     unsigned end_colour;
+#ifdef IPOD_6G
+    /* the colours as the skin gives them (0xRRGGBB), for gradients that
+     * are interpolated and dithered from these, not from RGB565 */
+    uint32_t start_rgb;
+    uint32_t end_rgb;
+#endif
 };
 
 struct align_pos {
@@ -272,6 +278,31 @@ struct playlistviewer {
 #define WPS_ALBUMART_ALIGN_TOP      1    /* y align:   top */
 #define WPS_ALBUMART_ALIGN_BOTTOM   4    /* y align:   bottom */
 
+/* %cD(long|short|weekday|month): the date in the words and the order of
+ * the current language, see get_rtc_token_value() */
+enum skin_locale_date {
+    SKIN_DATE_LONG,     /* LANG_DATE_FORMAT_LONG, e.g. "Monday, 9 November" */
+    SKIN_DATE_SHORT,    /* LANG_DATE_FORMAT_SHORT, e.g. "9 Nov 2026" */
+    SKIN_DATE_WEEKDAY,  /* full weekday name */
+    SKIN_DATE_MONTH,    /* short month name in capitals, e.g. "NOV" */
+};
+
+#ifdef IPOD_6G
+/* Effects of %Cd(tilt, perspective, reflection height, reflection opacity,
+ * corner radius), see skin_albumart_fx.c */
+struct skin_aa_fx {
+    int16_t tilt;         /* degrees about the vertical axis, + right back */
+    int16_t perspective;  /* distance of the eye in pixels */
+    int16_t refl_height;  /* pixels of the reflection below the cover */
+    int16_t refl_opacity; /* opacity of the reflection at the cover, % */
+    int16_t radius;       /* rounded corners in pixels */
+    int16_t cover_w, cover_h; /* of the picture in buffer */
+    int handle;           /* album art handle of that picture, -1 none */
+    size_t size;          /* bytes of buffer */
+    OFFSETTYPE(unsigned char *) buffer;
+};
+#endif
+
 struct skin_albumart {
     /* Album art support */
     int16_t x;
@@ -284,6 +315,9 @@ struct skin_albumart {
     unsigned char state; /* WPS_ALBUMART_NONE, _CHECK, _LOAD */
 
     int draw_handle;
+#ifdef IPOD_6G
+    OFFSETTYPE(struct skin_aa_fx *) draw_fx; /* of the %Cd drawn last */
+#endif
 };
 #endif
 

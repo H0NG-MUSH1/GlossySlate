@@ -379,6 +379,84 @@ static int voltage_to_battery_level(int millivolts)
 }
 #endif /* CONFIG_BATTERY_MEASURE & VOLTAGE_MEASURE */
 
+#if defined(IPOD_6G) && (CONFIG_BATTERY_MEASURE & VOLTAGE_MEASURE)
+/* After a full charge the cell rests and runs below the 4.17 V that
+ * percent_to_volt_discharge takes for 100 %, so a full battery read about
+ * 90 % as soon as the charger was out. From a full charge (charger in, the
+ * charger chip done, 100 %) until the level falls to FULL_FADE_LOW, levels
+ * from FULL_REST up count as full and those down to FULL_FADE_LOW are
+ * spread over the range up to 100 %: the gauge starts full and joins the
+ * measured level without a jump. Any other charge is left as measured. */
+#define FULL_REST      90
+#define FULL_FADE_LOW  60
+static int level_after_full_charge(int level)
+{
+    static bool after_full;
+
+    if (level < 0)
+        return level;
+    if (charger_inserted())
+    {
+        /* The charger chip stops at full charge, the theme then shows the
+         * plug. The voltage settles a little after that: the level read
+         * there is often 93..97 %, never 99 %, so the full charge was not
+         * noticed and the gauge showed that level after unplugging. Not
+         * charging on the charger from FULL_REST up counts as full now, and
+         * reads 100 % like the plug says. */
+        if (charging_state())
+            after_full = false;
+        else if (level >= FULL_REST)
+            after_full = true;
+        return after_full ? 100 : level;
+    }
+    if (!after_full)
+        return level;
+    if (level <= FULL_FADE_LOW)
+    {
+        after_full = false;
+        return level;
+    }
+    if (level >= FULL_REST)
+        return 100;
+    return FULL_FADE_LOW + (level - FULL_FADE_LOW) * (100 - FULL_FADE_LOW) /
+                           (FULL_REST - FULL_FADE_LOW);
+}
+
+/* The level comes from the voltage. When charging starts the table changes
+ * to percent_to_volt_charge (it expects the higher voltage under charge)
+ * at once, but the filtered voltage follows over about a minute
+ * (BATT_AVE_SAMPLES): plugging in showed about half the level before,
+ * unplugging too much. A battery gains no charge without charging and
+ * loses none while charging: the shown level only rises while charging
+ * and only falls otherwise, and at a change it stays until the measured
+ * level passes it. A full battery on the charger (charging done) may still
+ * go up to 100 %. */
+static int level_one_way(int level)
+{
+    static int shown = -1;
+    static bool was_charging;
+
+    if (level < 0)
+        return level;
+    bool charging = charging_state();
+    if (shown < 0)
+    {
+        shown = level;
+        was_charging = charging;
+        return level;
+    }
+    if (charging != was_charging)
+    {
+        was_charging = charging;
+        return shown;
+    }
+    if (charging ? level > shown :
+        (level < shown || (charger_inserted() && level >= 99)))
+        shown = level;
+    return shown;
+}
+#endif
+
 /* Update battery percentage and time remaining information.
  *
  * This will be called by the power thread after polling new battery data.
@@ -395,6 +473,10 @@ static void battery_status_update(void)
     int level = _battery_level();
 #elif CONFIG_BATTERY_MEASURE & VOLTAGE_MEASURE
     int level = voltage_to_battery_level(voltage_now);
+#ifdef IPOD_6G
+    level = level_after_full_charge(level);
+    level = level_one_way(level);
+#endif
 #else
     /* This should be a compile time error? */
     int level = -1;

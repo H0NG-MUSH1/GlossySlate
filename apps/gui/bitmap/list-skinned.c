@@ -40,9 +40,23 @@
 #include "skin_engine/skin_engine.h"
 #include "skin_engine/skin_display.h"
 #include "appevents.h"
+#ifdef IPOD_6G
+#include "string-extra.h"
+#endif
 
 static struct listitem_viewport_cfg *listcfg[NB_SCREENS] = {NULL};
 static struct gui_synclist *current_list;
+#ifdef IPOD_6G
+/* The selected item of the list that list_draw() drew last. While no
+ * skinned list (%Lb) is set up, %LT, %LV and %Lo give it in the viewports of
+ * the skins, so a theme that leaves its menus to the firmware lists can
+ * still show the selected item next to them (like %LT does for a skinned
+ * list). Copies, as the list may be gone when the skin draws. See
+ * skinlist_note_drawn_selection(). */
+static char drawn_text[MAX_PATH];
+static char drawn_value[64];
+static bool drawn_opens;
+#endif
 static bool needs_scrollbar[NB_SCREENS];
 
 static int current_row;
@@ -107,6 +121,10 @@ int skinlist_get_item_column()
 
 const char* skinlist_get_item_text(int offset, bool wrap, char* buf, size_t buf_size)
 {
+#ifdef IPOD_6G
+    if (!current_list)
+        return (offset == 0 && drawn_text[0]) ? drawn_text : NULL;
+#endif
     int item = offset_to_item(offset, wrap);
     if (item < 0 || !current_list)
         return NULL;
@@ -122,6 +140,63 @@ enum themable_icons skinlist_get_item_icon(int offset, bool wrap)
         return Icon_NOICON;
     return current_list->callback_get_item_icon(item, current_list->data);
 }
+
+#ifdef IPOD_6G
+void skinlist_note_drawn_selection(struct gui_synclist *list)
+{
+    char buf[MAX_PATH];
+    const char *text = NULL, *value = NULL;
+    bool opens = false;
+    int sel = list->selected_item;
+
+    if (sel >= 0 && sel < list->nb_items)
+    {
+        text = list->callback_get_item_name(sel, list->data, buf, sizeof(buf));
+        if (text)
+            text = P2STR((unsigned char *)text);
+        while (text && *text == '\t')
+            text++;
+    }
+    bool changed = strcmp(drawn_text, text ? text : "") != 0;
+    strmemccpy(drawn_text, text ? text : "", sizeof(drawn_text));
+
+    if (sel >= 0 && sel < list->nb_items)
+    {
+        if (list->callback_get_item_value)
+            value = list->callback_get_item_value(sel, list->data,
+                                                  buf, sizeof(buf));
+        if (list->callback_item_opens)
+            opens = list->callback_item_opens(sel, list->data);
+    }
+    changed = changed || opens != drawn_opens ||
+              strcmp(drawn_value, value ? value : "") != 0;
+    strmemccpy(drawn_value, value ? value : "", sizeof(drawn_value));
+    drawn_opens = opens;
+    if (changed)
+        sb_skin_force_next_update();
+}
+
+const char* skinlist_get_item_value(int offset, bool wrap,
+                                    char* buf, size_t buf_size)
+{
+    if (!current_list)
+        return (offset == 0 && drawn_value[0]) ? drawn_value : NULL;
+    int item = offset_to_item(offset, wrap);
+    if (item < 0 || !current_list || !current_list->callback_get_item_value)
+        return NULL;
+    return current_list->callback_get_item_value(item, current_list->data,
+                                                 buf, buf_size);
+}
+
+bool skinlist_item_opens(void)
+{
+    if (!current_list)
+        return drawn_opens;
+    int item = offset_to_item(0, false);
+    return item >= 0 && current_list && current_list->callback_item_opens &&
+           current_list->callback_item_opens(item, current_list->data);
+}
+#endif
 
 static bool is_selected = false;
 bool skinlist_is_selected_item(void)
@@ -266,10 +341,25 @@ bool skinlist_draw(struct screen *display, struct gui_synclist *list)
                 imglist = SKINOFFSETTOPTR(get_skin_buffer(wps.data), imglist->next);
             }
             struct skin_element** children = SKINOFFSETTOPTR(get_skin_buffer(wps.data), viewport->children);
+#ifdef IPOD_6G
+            /* The images of the row go over its line (the selection bar):
+             * drawn the usual way their transparent pixels took the backdrop,
+             * a white box around the check mark. The list area was cleared
+             * and the row is drawn once, so blending is safe; the images are
+             * drawn at the end of skin_render_viewport(), not twice. */
+            wps_images_over(true);
+            skin_render_write_all_lines(true);
+            if (children && *children)
+                skin_render_viewport(SKINOFFSETTOPTR(get_skin_buffer(wps.data), (intptr_t)children[0]),
+                                     &wps, skin_viewport, SKIN_REFRESH_ALL);
+            skin_render_write_all_lines(false);
+            wps_images_over(false);
+#else
             if (children && *children)
                 skin_render_viewport(SKINOFFSETTOPTR(get_skin_buffer(wps.data), (intptr_t)children[0]),
                                      &wps, skin_viewport, SKIN_REFRESH_ALL);
             wps_display_images(&wps, &skin_viewport->vp);
+#endif
             /* force disableing scroll because it breaks later */
             if (!is_selected)
             {

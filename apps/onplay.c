@@ -1284,10 +1284,41 @@ MENUITEM_FUNCTION(view_playlist_item, 0, ID2P(LANG_VIEW),
                   view_playlist,
                   onplaymenu_callback, Icon_Playlist);
 
+#if defined(HAVE_TAGCACHE) && defined(IPOD_6G)
+/* Podcasts and audiobooks in the database: forget that the selected track,
+ * or every track of the selected album, was heard
+ * (docs/ipod6g-database-media-types.md) */
+static int mark_unheard(void)
+{
+    if (!tagtree_mark_unheard(tree_get_context()))
+        splash(HZ, ID2P(LANG_TAGCACHE_BUSY));
+    return 0;
+}
+static int mark_unheard_callback(int action,
+                                 const struct menu_item_ex *this_item,
+                                 struct gui_synclist *this_list)
+{
+    (void)this_item;
+    (void)this_list;
+    if (action == ACTION_REQUEST_MENUITEM &&
+        (selected_file.context != CONTEXT_ID3DB ||
+         !tagtree_can_mark_unheard(tree_get_context())))
+        return ACTION_EXIT_MENUITEM;
+    if (action == ACTION_EXIT_MENUITEM) /* back to the list */
+        return ACTION_EXIT_AFTER_THIS_MENUITEM;
+    return action;
+}
+MENUITEM_FUNCTION(mark_unheard_item, 0, ID2P(LANG_MARK_UNHEARD),
+                  mark_unheard, mark_unheard_callback, Icon_NOICON);
+#endif
+
 /* used when onplay() is not called in the CONTEXT_WPS context */
 MAKE_ONPLAYMENU( tree_onplay_menu, ID2P(LANG_ONPLAY_MENU_TITLE),
            onplaymenu_callback, Icon_file_view_menu,
            &view_playlist_item, &tree_playlist_menu, &cat_playlist_menu,
+#if defined(HAVE_TAGCACHE) && defined(IPOD_6G)
+           &mark_unheard_item,
+#endif
            &rename_file_item, &clipboard_cut_item, &clipboard_copy_item,
            &clipboard_paste_item, &delete_file_item, &delete_dir_item,
            &list_viewers_item, &create_dir_item, &properties_item, &track_info_item,

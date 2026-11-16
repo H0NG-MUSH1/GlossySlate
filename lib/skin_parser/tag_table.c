@@ -109,6 +109,7 @@ static const struct tag_info legal_tags[] =
     TAG(SKIN_TOKEN_RTC_MONTH_NAME,        "cb", "", SKIN_RTC_REFRESH),
     TAG(SKIN_TOKEN_RTC_DAY_OF_WEEK_START_MON, "cu", "", SKIN_RTC_REFRESH),
     TAG(SKIN_TOKEN_RTC_DAY_OF_WEEK_START_SUN, "cw", "", SKIN_RTC_REFRESH),
+    TAG(SKIN_TOKEN_RTC_LOCALE_DATE,       "cD", "S", SKIN_RTC_REFRESH),
 
     TAG(SKIN_TOKEN_METADATA_ARTIST,       "ia", "", SKIN_REFRESH_STATIC),
     TAG(SKIN_TOKEN_METADATA_COMPOSER,     "ic", "", SKIN_REFRESH_STATIC),
@@ -202,7 +203,7 @@ static const struct tag_info legal_tags[] =
 
     TAG(SKIN_TOKEN_LOAD_FONT,             "Fl" , "IF|I", 0|NOBREAK),
     TAG(SKIN_TOKEN_ALBUMART_LOAD,         "Cl" , "[iP][iP][iP][iP]|ss", 0|NOBREAK),
-    TAG(SKIN_TOKEN_ALBUMART_DISPLAY,      "Cd" , "", SKIN_REFRESH_STATIC),
+    TAG(SKIN_TOKEN_ALBUMART_DISPLAY,      "Cd" , "|iiiii", SKIN_REFRESH_STATIC),
     TAG(SKIN_TOKEN_ALBUMART_FOUND,        "C" , "", SKIN_REFRESH_STATIC),
 
 
@@ -215,6 +216,9 @@ static const struct tag_info legal_tags[] =
     TAG(SKIN_TOKEN_LIST_ITEM_ICON,        "LI", "|IS",  SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_LIST_ITEM_CFG,         "Lb" , "Sii|S", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_LIST_ITEM_IS_SELECTED, "Lc" , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_LIST_ITEM_VALUE,       "LV", "|IS",  SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_LIST_ITEM_OPENS,       "Lo" , "", SKIN_REFRESH_DYNAMIC),
+    TAG(SKIN_TOKEN_MEDIA_COUNT,           "Mc" , "S", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_LIST_NEEDS_SCROLLBAR,  "LB", BAR_PARAMS, SKIN_REFRESH_DYNAMIC),
 
     TAG(SKIN_TOKEN_TOP_QUICKSETTING_NAME,    "QT" , "", SKIN_REFRESH_DYNAMIC),
@@ -230,6 +234,7 @@ static const struct tag_info legal_tags[] =
      * and we don't allow no params. */
     TAG(SKIN_TOKEN_SETTING,               "St" , "[Sip]|[ip][ip][ip]s*", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_TRANSLATEDSTRING,      "Sx" , "S", SKIN_REFRESH_STATIC),
+    TAG(SKIN_TOKEN_SETTING_VALUE,         "Sv" , "S", SKIN_REFRESH_DYNAMIC),
     TAG(SKIN_TOKEN_LANG_IS_RTL,           "Sr" , "", SKIN_REFRESH_STATIC),
 
     /* HACK Alert (jdgordon): The next two tags have hacks so we could

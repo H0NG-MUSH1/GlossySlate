@@ -123,6 +123,15 @@ int lcd_type; /* also needed in debug-s5l8702.c */
 static struct mutex lcd_mutex;
 static uint16_t lcd_dblbuf[LCD_HEIGHT][LCD_WIDTH] CACHEALIGN_ATTR;
 static bool lcd_ispowered;
+#ifdef IPOD_6G
+static volatile bool lcd_waking;
+static volatile bool lcd_hold_frame;
+
+void lcd_hold_frame_for_backlight(bool hold)
+{
+    lcd_hold_frame = hold;
+}
+#endif
 
 /* TODO: there is no info about these specific drivers,
    some useful info on similar HW such as ILI9320, ILI9326, ILI9340 and */
@@ -409,6 +418,10 @@ static void displaylcd_wait_dma(void)
 void lcd_update_rect(int, int, int, int) ICODE_ATTR;
 void lcd_update_rect(int x, int y, int width, int height)
 {
+#ifdef IPOD_6G
+    bool complete_frame = x == 0 && y == 0 &&
+                          width == LCD_WIDTH && height == LCD_HEIGHT;
+#endif
     int pixels = width * height;
 #if defined(HAVE_COMPOSITE_VIDEO_OUT) && !defined(BOOTLOADER)
     int original_height = height;
@@ -418,7 +431,11 @@ void lcd_update_rect(int x, int y, int width, int height)
 
     /* FIXME: ISR()->panicf()->lcd_update() blocks forever */
     mutex_lock(&lcd_mutex);
-    if (lcd_ispowered)
+    if (lcd_ispowered
+#ifdef IPOD_6G
+        && !lcd_hold_frame
+#endif
+       )
     {
         // XXX: We contemplate the case where the LCD has entered SLEEP,
         //      the s5l_lcd_set_command_mode() writes LCD_CONFIG
@@ -448,6 +465,13 @@ void lcd_update_rect(int x, int y, int width, int height)
                                       original_height, width);
 #endif
         displaylcd_dma(pixels);
+#ifdef IPOD_6G
+        if (complete_frame && !lcd_waking && backlight_hw_frame_pending())
+        {
+            displaylcd_wait_dma();
+            backlight_hw_frame_ready();
+        }
+#endif
     }
     mutex_unlock(&lcd_mutex);
 }
@@ -487,7 +511,11 @@ void lcd_blit_yuv(unsigned char * const src[3],
 
     /* TODO: ISR()->panicf()->lcd_update() blocks forever */
     mutex_lock(&lcd_mutex);
-    if (lcd_ispowered)
+    if (lcd_ispowered
+#ifdef IPOD_6G
+        && !lcd_hold_frame
+#endif
+       )
     {
         displaylcd_wait_dma();
 
@@ -585,11 +613,21 @@ void lcd_sleep(void)
     if (videoout_lcd_clock_required())
         return;
 #endif
+#ifdef IPOD_6G
+    /* Finish the PMU's normal fade before sleeping the panel. Cutting the
+     * LED off right before lcd_powersave() keeps the
+     * sleep transition dark. */
+    backlight_hw_wait_for_fade_out();
+    backlight_hw_kill();
+#endif
     lcd_powersave();
 }
 
 void lcd_awake(void)
 {
+#ifdef IPOD_6G
+    lcd_waking = true;
+#endif
     mutex_lock(&lcd_mutex);
 
     lcd_target_enable_clocks(true);
@@ -605,6 +643,9 @@ void lcd_awake(void)
 
     mutex_unlock(&lcd_mutex);
     send_event(LCD_EVENT_ACTIVATION, NULL);
+#ifdef IPOD_6G
+    lcd_waking = false;
+#endif
 }
 #endif
 

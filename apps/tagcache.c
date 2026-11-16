@@ -90,6 +90,9 @@
 #ifndef __PCTOOL__
 #include "lang.h"
 #include "eeprom_settings.h"
+#ifdef IPOD_6G
+#include "albumart_list.h"
+#endif
 #endif
 #define USR_CANCEL false
 #else/*!defined(PLUGIN)*/
@@ -112,7 +115,10 @@
 #define IDX_BUF_DEPTH 64
 
 /* Tag Cache Header version 'TCHxx'. Increment when changing internal structures. */
-#define TAGCACHE_MAGIC  0x54434810
+/* 0x11: index entries carry their media type (FLAG_PODCAST, FLAG_AUDIOBOOK).
+ * A database without it would list podcasts and audiobooks as music, so it
+ * is not used and has to be built again. */
+#define TAGCACHE_MAGIC  0x54434811
 
 /* Dump store/restore header version 'TCSxx'. */
 #define TAGCACHE_STATEFILE_MAGIC 0x54435301
@@ -159,6 +165,17 @@
 #define FLAG_DIRTYNUM    0x0004  /* Numeric data has been modified */
 #define FLAG_TRKNUMGEN   0x0008  /* Track number has been generated  */
 #define FLAG_RESURRECTED 0x0010  /* Statistics data has been resurrected */
+/* Media type (enum tagcache_media) from the folder of the file when it was
+ * added; music has neither flag. */
+#define FLAG_PODCAST     0x0020
+#define FLAG_AUDIOBOOK   0x0040
+
+static inline int media_of_flag(int32_t flag)
+{
+    return (flag & FLAG_AUDIOBOOK) ? TAGCACHE_MEDIA_AUDIOBOOK :
+           (flag & FLAG_PODCAST)   ? TAGCACHE_MEDIA_PODCAST :
+                                     TAGCACHE_MEDIA_MUSIC;
+}
 
 #ifdef __PCTOOL__
 #define yield() do { } while(0)
@@ -224,7 +241,7 @@ static const char * const tags_str[] = { "artist", "album", "genre", "title",
 #else /* strings for logf debugging */
     "tag_virt_basename", "tag_virt_length_min", "tag_virt_length_sec",
     "tag_virt_playtime_min", "tag_virt_playtime_sec",
-    "tag_virt_entryage", "tag_virt_autoscore"
+    "tag_virt_entryage", "tag_virt_autoscore", "tag_virt_mediatype"
 };
 /* more debug strings */
 static const char * const tag_type_str[] = {
@@ -260,6 +277,37 @@ char *itoa_buf(char *buf, size_t bufsz, long int i)
 
 /* Status information of the tagcache. */
 static struct tagcache_stat tc_stat;
+/* Only the active album-list search requests a matching track index. Keep
+ * this outside struct tagcache_search so existing plugins retain its layout. */
+static struct tagcache_search *track_index_search;
+#define TRACK_INDEX_MAP_SIZE 16384
+static int32_t track_index_ids[TRACK_INDEX_MAP_SIZE];
+
+/* Media type filter of the searches. tcs->media holds the media type of the
+ * results (bits 0-7) and the state of the media map: a direct search of a
+ * unique tag reads its sorted tag file and returns only the entries that
+ * tracks of that media type use; the map, a hash set of their seeks, is
+ * built in one pass over the index (build_media_map()). */
+#define SEARCH_MEDIA(tcs)  ((tcs)->media & 0xff)
+#define SEARCH_MAP_READY   0x100   /* the media map is built */
+#define SEARCH_MAP_FAILED  0x200   /* no room for it: relative search */
+#if !defined(PLUGIN)
+/* Media map of searches without a unique buffer (plugins, album count),
+ * one search at a time */
+#define MEDIA_MAP_SIZE 8192
+static uint32_t media_map_seeks[MEDIA_MAP_SIZE];
+static struct tagcache_search *media_map_owner;
+/* changes with every change of numeric data, see
+ * tagcache_numeric_generation() */
+static unsigned numeric_gen;
+#endif
+#ifdef IPOD_6G
+/* tagcache_count_albums(): the last count per media type, -1 when it must
+ * be done again */
+static int album_count[TAGCACHE_MEDIA_COUNT] = { -1, -1, -1 };
+static int32_t album_count_commitid[TAGCACHE_MEDIA_COUNT];
+static int32_t album_count_entries[TAGCACHE_MEDIA_COUNT];
+#endif
 
 /* Queue commands. */
 enum tagcache_queue {
@@ -268,6 +316,9 @@ enum tagcache_queue {
     Q_IMPORT_CHANGELOG,
     Q_UPDATE,
     Q_REBUILD,
+#ifdef IPOD_6G
+    Q_FLUSH_NUMERIC,
+#endif
 
     /* Internal tagcache command queue. */
     CMD_UPDATE_MASTER_HEADER,
@@ -1316,6 +1367,10 @@ static long check_virtual_tags(int tag, int idx_id,
             }
             break;
 
+        case tag_virt_mediatype:
+            data = media_of_flag(idx->flag);
+            break;
+
         /* How many commits before the file has been added to the DB. */
         case tag_virt_entryage:
             data = current_tcmh.commitid
@@ -1639,6 +1694,28 @@ static bool add_uniqbuf(struct tagcache_search *tcs, uint32_t id)
         return true;
     }
 
+    if (tcs == track_index_search)
+    {
+        /* A relative album search can visit thousands of tracks. Keep
+         * duplicate detection constant-time instead of scanning every
+         * album already found for each track. */
+        unsigned slot = (id * 2654435761u) % tcs->unique_list_capacity;
+        for (int n = 0; n < tcs->unique_list_capacity; n++)
+        {
+            if (tcs->unique_list[slot] == id)
+                return false;
+            if (tcs->unique_list[slot] == UINT32_MAX)
+            {
+                tcs->unique_list[slot] = id;
+                tcs->unique_list_count++;
+                return true;
+            }
+            if (++slot == (unsigned)tcs->unique_list_capacity)
+                slot = 0;
+        }
+        return true; /* Match the existing behavior when the buffer is full. */
+    }
+
     for (i = 0; i < tcs->unique_list_count; i++)
     {
         /* Return false if entry is found. */
@@ -1656,6 +1733,142 @@ static bool add_uniqbuf(struct tagcache_search *tcs, uint32_t id)
     }
 
     return true;
+}
+
+static inline bool media_matches(const struct tagcache_search *tcs,
+                                 int32_t flag)
+{
+    return SEARCH_MEDIA(tcs) == TAGCACHE_MEDIA_ALL ||
+           SEARCH_MEDIA(tcs) == media_of_flag(flag);
+}
+
+/* Slot of seek in a media map (open addressing), or the free slot where it
+ * belongs; -1 if the map is full */
+static int map_slot(const uint32_t *map, int capacity, uint32_t seek)
+{
+    unsigned slot = (seek * 2654435761u) % capacity;
+    for (int n = 0; n < capacity; n++)
+    {
+        if (map[slot] == seek || map[slot] == UINT32_MAX)
+            return slot;
+        if (++slot == (unsigned)capacity)
+            slot = 0;
+    }
+    return -1;
+}
+
+/* The media map of a search: its unique buffer if it has one, else the
+ * shared one, if no other search holds it */
+static uint32_t *media_map(struct tagcache_search *tcs, int *capacity)
+{
+    if (tcs->unique_list != NULL && tcs->unique_list_capacity > 0)
+    {
+        *capacity = tcs->unique_list_capacity;
+        return tcs->unique_list;
+    }
+    if (media_map_owner != NULL && media_map_owner != tcs)
+        return NULL;
+    media_map_owner = tcs;
+    *capacity = MEDIA_MAP_SIZE;
+    return media_map_seeks;
+}
+
+/* Puts the seek of a live track of the search's media type into the map,
+ * for the album list with the track (track_index_ids). False when the map
+ * would be more than 3/4 full. */
+static bool media_map_add(struct tagcache_search *tcs, uint32_t *map,
+                          int capacity, int *used,
+                          const struct index_entry *idx, int idx_id)
+{
+    if ((idx->flag & FLAG_DELETED) || !media_matches(tcs, idx->flag))
+        return true;
+    uint32_t seek = idx->tag_seek[tcs->type];
+    int slot = map_slot(map, capacity, seek);
+    if (slot >= 0 && map[slot] == seek)
+        return true;
+    if (slot < 0 || *used >= capacity - capacity / 4)
+        return false;
+    map[slot] = seek;
+    if (tcs == track_index_search)
+        track_index_ids[slot] = idx_id;
+    (*used)++;
+    return true;
+}
+
+/* Unique tag files are sorted alphabetically, but their entries do not say
+ * which tracks use them. One pass over the index collects the seeks used
+ * by tracks of the search's media type; the search then reads the tag file
+ * in its order and skips all other entries, instead of searching every
+ * track for every entry. The album list also gets a track per album. */
+static bool build_media_map(struct tagcache_search *tcs)
+{
+    struct index_entry entry;
+    int capacity, used = 0;
+    int count = current_tcmh.tch.entry_count;
+    bool ok;
+    uint32_t *map = media_map(tcs, &capacity);
+    if (map == NULL)
+        return false;
+    memset(map, 0xff, capacity * sizeof(*map));
+
+#ifdef HAVE_TC_RAMCACHE
+    if (tcs->ramsearch)
+    {
+        ok = true;
+        tcrc_buffer_lock();
+        for (int i = 0; i < count && ok; i++)
+            ok = media_map_add(tcs, map, capacity, &used,
+                               &tcramcache.hdr->indices[i], i);
+        tcrc_buffer_unlock();
+    }
+    else
+#endif
+    {
+        ok = tcs->masterfd >= 0 &&
+             lseek(tcs->masterfd, sizeof(struct master_header), SEEK_SET) >= 0;
+        for (int i = 0; i < count && ok; i++)
+        {
+            ok = read_index_entries(tcs->masterfd, &entry, 1) ==
+                     sizeof(struct index_entry) &&
+                 media_map_add(tcs, map, capacity, &used, &entry, i);
+            do_timed_yield();
+        }
+    }
+
+    if (!ok)
+    {
+        /* The search runs relative to the index, with an empty duplicate
+         * list (a hash set for the album list, see add_uniqbuf()). */
+        memset(map, 0xff, capacity * sizeof(*map));
+        if (map == media_map_seeks)
+            media_map_owner = NULL;
+    }
+    tcs->unique_list_count = 0;
+    return ok;
+}
+
+/* Direct fetch: is the tag entry just read a result of the search's media
+ * type? Gives the album list the track found for its album. */
+static bool direct_entry_wanted(struct tagcache_search *tcs, bool mapped)
+{
+    if (mapped)
+    {
+        int capacity;
+        uint32_t *map = media_map(tcs, &capacity);
+        int slot = map ? map_slot(map, capacity, tcs->result_seek) : -1;
+        if (slot < 0 || map[slot] != (uint32_t)tcs->result_seek)
+            return false;
+        if (tcs == track_index_search)
+            tcs->idx_id = track_index_ids[slot];
+        return true;
+    }
+
+    /* title, filename: the entry belongs to the one track tcs->idx_id */
+    struct index_entry idx;
+    return SEARCH_MEDIA(tcs) == TAGCACHE_MEDIA_ALL ||
+           (tcs->idx_id >= 0 && tcs->idx_id < current_tcmh.tch.entry_count &&
+            get_index(tcs->masterfd, tcs->idx_id, &idx, true) &&
+            media_matches(tcs, idx.flag));
 }
 
 static bool build_lookup_list(struct tagcache_search *tcs)
@@ -1678,8 +1891,8 @@ static bool build_lookup_list(struct tagcache_search *tcs)
             if (tcs->seek_list_count == SEEK_LIST_SIZE)
                 break ;
 
-            /* Skip deleted files. */
-            if (idx->flag & FLAG_DELETED)
+            /* Skip deleted files and other media types. */
+            if ((idx->flag & FLAG_DELETED) || !media_matches(tcs, idx->flag))
                 continue;
 
             /* Go through all filters.. */
@@ -1736,8 +1949,8 @@ static bool build_lookup_list(struct tagcache_search *tcs)
         i = tcs->seek_pos;
         tcs->seek_pos++;
 
-        /* Check if entry has been deleted. */
-        if (entry.flag & FLAG_DELETED)
+        /* Check if entry has been deleted or is of another media type. */
+        if ((entry.flag & FLAG_DELETED) || !media_matches(tcs, entry.flag))
             continue;
 
         /* Go through all filters.. */
@@ -1844,6 +2057,28 @@ void tagcache_search_set_uniqbuf(struct tagcache_search *tcs,
     memset(tcs->unique_list, 0, tcs->unique_list_capacity);
 }
 
+void tagcache_search_track_index(struct tagcache_search *tcs)
+{
+    if (TAGCACHE_IS_UNIQUE(tcs->type) && tcs->unique_list_capacity > 0)
+    {
+        track_index_search = tcs;
+        tcs->unique_list_capacity = MIN(tcs->unique_list_capacity,
+                                        TRACK_INDEX_MAP_SIZE);
+        memset(tcs->unique_list, 0xff,
+               tcs->unique_list_capacity * sizeof(*tcs->unique_list));
+    }
+}
+
+void tagcache_search_set_media(struct tagcache_search *tcs, int media)
+{
+    tcs->media = media & 0xff; /* a media map is built anew */
+}
+
+int tagcache_search_get_media(const struct tagcache_search *tcs)
+{
+    return SEARCH_MEDIA(tcs);
+}
+
 bool tagcache_search_add_filter(struct tagcache_search *tcs,
                                 int tag, int seek)
 {
@@ -1870,6 +2105,20 @@ bool tagcache_search_add_clause(struct tagcache_search *tcs,
     {
         logf("Too many clauses");
         return false;
+    }
+
+    /* "mediatype == n" is no condition but selects the media type of the
+     * search, which can so stay a direct one. Any other condition on it is
+     * checked per entry and the search covers every media type. */
+    if (clause->tag == tag_virt_mediatype && clause->type != clause_logical_or)
+    {
+        if (clause->type == clause_is && clause->numeric &&
+            clause->source == source_constant)
+        {
+            tagcache_search_set_media(tcs, clause->numeric_data);
+            return true;
+        }
+        tagcache_search_set_media(tcs, TAGCACHE_MEDIA_ALL);
     }
 
     if (clause->type != clause_logical_or)
@@ -1907,6 +2156,7 @@ bool tagcache_search_add_clause(struct tagcache_search *tcs,
 static bool get_next(struct tagcache_search *tcs, bool is_numeric, char *buf, long bufsz)
 {
     struct tagfile_entry entry;
+    int32_t matching_idx_id = -1;
 #if defined(HAVE_TC_RAMCACHE) && defined(HAVE_DIRCACHE)
     long flag = 0;
 #endif
@@ -1918,13 +2168,30 @@ static bool get_next(struct tagcache_search *tcs, bool is_numeric, char *buf, lo
         )
         return false;
 
-    /* Relative fetch. */
-    if (tcs->filter_count > 0 || tcs->clause_count > 0 || is_numeric
+    bool relative = tcs->filter_count > 0 || tcs->clause_count > 0 ||
+        is_numeric
 #if defined(HAVE_TC_RAMCACHE) && defined(HAVE_DIRCACHE)
         /* We need to retrieve flag status for dircache. */
         || (tcs->ramsearch && tcs->type == tag_filename)
 #endif
-        )
+        ;
+
+    /* A direct search of a unique tag returns the entries of its media map
+     * only; without room for the map it searches relative to the index,
+     * which checks the media type of every track (build_lookup_list()). */
+    bool mapped = !relative && TAGCACHE_IS_UNIQUE(tcs->type) &&
+        (SEARCH_MEDIA(tcs) != TAGCACHE_MEDIA_ALL || tcs == track_index_search);
+    if (mapped && !(tcs->media & (SEARCH_MAP_READY | SEARCH_MAP_FAILED)))
+        tcs->media |= build_media_map(tcs) ? SEARCH_MAP_READY
+                                           : SEARCH_MAP_FAILED;
+    if (mapped && (tcs->media & SEARCH_MAP_FAILED))
+    {
+        mapped = false;
+        relative = true;
+    }
+
+    /* Relative fetch. */
+    if (relative)
     {
         struct tagcache_seeklist_entry *seeklist;
 
@@ -1947,6 +2214,7 @@ static bool get_next(struct tagcache_search *tcs, bool is_numeric, char *buf, lo
 #endif
         tcs->position = seeklist->seek;
         tcs->idx_id = seeklist->idx_id;
+        matching_idx_id = seeklist->idx_id;
         tcs->list_position++;
     }
     else
@@ -2004,6 +2272,11 @@ static bool get_next(struct tagcache_search *tcs, bool is_numeric, char *buf, lo
             /* Increase position for the next run. This may get overwritten. */
             tcs->position += sizeof(struct tagfile_entry) + ep->tag_length;
 
+            if (tcs == track_index_search && relative)
+                tcs->idx_id = matching_idx_id;
+            else if (!relative && !direct_entry_wanted(tcs, mapped))
+                tcs->result_len = 0; /* no result, see tagcache_get_next() */
+
             return true;
         }
     }
@@ -2048,6 +2321,10 @@ static bool get_next(struct tagcache_search *tcs, bool is_numeric, char *buf, lo
     tcs->result = buf;
     tcs->result_len = entry.tag_length + 1;
     tcs->idx_id = entry.idx_id;
+    if (tcs == track_index_search && relative)
+        tcs->idx_id = matching_idx_id;
+    else if (!relative && !direct_entry_wanted(tcs, mapped))
+        tcs->result_len = 0; /* no result, see tagcache_get_next() */
     tcs->ramresult = false;
 
     return true;
@@ -2087,6 +2364,11 @@ bool tagcache_retrieve(struct tagcache_search *tcs, int idxid,
 void tagcache_search_finish(struct tagcache_search *tcs)
 {
     int i;
+
+    if (tcs == track_index_search)
+        track_index_search = NULL;
+    if (tcs == media_map_owner)
+        media_map_owner = NULL;
 
     if (!tcs->initialized)
         return;
@@ -2258,6 +2540,38 @@ static void db_log(const char *prefix, const char *msg)
  * idea, as it uses lots of stack and is called from a recursive function
  * (check_dir).
  */
+#ifdef IPOD_6G
+/* The folders the database reads and the media type of their files. Files
+ * elsewhere are not added; database.ignore is not needed any more. */
+static const struct {
+    const char *dir;
+    int32_t flag;
+} media_dirs[] = {
+    { "/Music",      0 },
+    { "/Musik",      0 },
+    { "/Podcasts",   FLAG_PODCAST },
+    { "/Audiobooks", FLAG_AUDIOBOOK },
+};
+
+/* The media folder that path is or lies in (index into media_dirs), -1 if
+ * none */
+static int media_dir_of(const char *path)
+{
+#ifdef HAVE_MULTIVOLUME
+    /* On the device the scan starts at the volume roots: "/<0>/Music/..." */
+    path_strip_volume(path, &path, false);
+#endif
+    for (size_t i = 0; i < ARRAYLEN(media_dirs); i++)
+    {
+        size_t len = strlen(media_dirs[i].dir);
+        if (!strncasecmp(path, media_dirs[i].dir, len) &&
+            (path[len] == '/' || path[len] == '\0'))
+            return i;
+    }
+    return -1;
+}
+#endif
+
 static void NO_INLINE add_tagcache(char *path, unsigned long mtime)
 {
     #define ADD_TAG(entry, tag, data) \
@@ -2280,6 +2594,12 @@ static void NO_INLINE add_tagcache(char *path, unsigned long mtime)
 
     if (cachefd < 0)
         return ;
+
+#ifdef IPOD_6G
+    int media_dir = media_dir_of(path);
+    if (media_dir < 0)
+        return; /* not in a media folder */
+#endif
 
     /* Check for overlength file path. */
     if (path_length > MAX_PATH || path_length > TAG_MAXLEN)
@@ -2339,6 +2659,10 @@ static void NO_INLINE add_tagcache(char *path, unsigned long mtime)
     /*memset(&id3, 0, sizeof(struct mp3entry)); -- get_metadata does this for us */
     memset(&entry, 0, sizeof(struct temp_file_entry));
     memset(&tracknumfix, 0, sizeof(tracknumfix));
+#ifdef IPOD_6G
+    /* the media type, kept in the index entry flags on commit */
+    entry.flag = media_dirs[media_dir].flag;
+#endif
     ret = get_metadata_afmt(&id3, -1, path, afmt, METADATA_EXCLUDE_ID3_PATH);
 
     if (!ret)
@@ -3606,6 +3930,7 @@ static bool modify_numeric_entry(int masterfd, int idx_id, int tag, long data)
     idx.tag_seek[tag] = data;
     idx.flag |= FLAG_DIRTYNUM;
 
+    numeric_gen++;
     return write_index(masterfd, idx_id, &idx);
 }
 
@@ -4100,6 +4425,10 @@ static bool delete_entry(long idx_id)
         logf("delete_entry(): already deleted!");
         goto cleanup;
     }
+#ifdef IPOD_6G
+    for (int m = 0; m < TAGCACHE_MEDIA_COUNT; m++)
+        album_count[m] = -1; /* the album may have gone with it */
+#endif
 
     myidx.flag |= FLAG_DELETED;
     lseek(masterfd, -(off_t)sizeof(struct index_entry), SEEK_CUR);
@@ -4321,6 +4650,18 @@ static struct buflib_callbacks ops = {
     .shrink_callback = NULL,
 };
 
+/* RAM the database with this header needs in the ramcache, without the
+ * reserve for growth */
+static size_t ramcache_size(const struct master_header *tcmh)
+{
+    size_t size = tcmh->tch.datasize + 256 +
+        sizeof(struct ramcache_header) + TAG_COUNT*sizeof(void *);
+#ifdef HAVE_DIRCACHE
+    size += tcmh->tch.entry_count*sizeof(struct dircache_fileref);
+#endif
+    return size;
+}
+
 static bool allocate_tagcache(void)
 {
     tc_stat.ramcache_allocated = 0;
@@ -4339,11 +4680,7 @@ static bool allocate_tagcache(void)
      * Now calculate the required cache size plus
      * some extra space for alignment fixes.
      */
-    size_t alloc_size = tcmh.tch.datasize + 256 + TAGCACHE_RESERVE +
-        sizeof(struct ramcache_header) + TAG_COUNT*sizeof(void *);
-#ifdef HAVE_DIRCACHE
-    alloc_size += tcmh.tch.entry_count*sizeof(struct dircache_fileref);
-#endif
+    size_t alloc_size = ramcache_size(&tcmh) + TAGCACHE_RESERVE;
 
     int handle = core_alloc_ex(alloc_size, &ops);
     if (handle <= 0)
@@ -4791,6 +5128,7 @@ wend_finished:
     return ret;
 }
 
+#ifndef IPOD_6G /* the media folders decide, see media_dirs */
 /* Note that this function must not be inlined, otherwise the whole point
  * of having the code in a separate function is lost.
  */
@@ -4807,6 +5145,7 @@ static void NO_INLINE check_ignore(const char *dirname,
     snprintf(newpath, bufsz, "%s/database.unignore", dirname);
     *unignore = file_exists(newpath);
 }
+#endif
 
 /* max roots on native. on application more can be added via malloc() */
 #define MAX_STATIC_ROOTS 12
@@ -4935,6 +5274,7 @@ static bool check_dir(const char *dirname, int add_files)
         return false;
     }
 
+#ifndef IPOD_6G
     /* check for a database.ignore and database.unignore */
     int ignore, unignore;
     check_ignore(dirname, &ignore, &unignore);
@@ -4942,6 +5282,7 @@ static bool check_dir(const char *dirname, int add_files)
     /* don't do anything if both ignore and unignore are there */
     if (ignore != unignore)
         add_files = unignore;
+#endif
 
     /* Recursively scan the dir. */
     while (!check_event_queue())
@@ -4955,6 +5296,12 @@ static bool check_dir(const char *dirname, int add_files)
 
         if (is_dotdir_name(entry->d_name))
             continue;
+#ifdef IPOD_6G
+        /* no dot files either: the "._name" companions macOS writes next
+         * to the files it copies (they end in .mp3 and so on as well) */
+        if (entry->d_name[0] == '.')
+            continue;
+#endif
 
         struct dirinfo info = dir_get_info(dir, entry);
         size_t len = strlen(curpath);
@@ -4971,6 +5318,10 @@ static bool check_dir(const char *dirname, int add_files)
                 add_search_root(curpath);
             else
 #endif /* SIMULATOR */
+#ifdef IPOD_6G
+            /* only the media folders and what lies in them */
+            if (media_dir_of(curpath) >= 0)
+#endif
                 check_dir(curpath, add_files);
         }
         else if (add_files)
@@ -5200,6 +5551,24 @@ static void load_ramcache(void)
     if (!tcramcache.hdr)
         return ;
 
+#ifdef IPOD_6G
+    /* The RAM was reserved at boot for the database of that time. One that
+     * has grown beyond it since (e.g. built anew from an empty one) does not
+     * fit. It stays on disk until the next boot instead of being disabled
+     * (which left it unusable until a reboot); a larger reservation now
+     * would take memory from playback. The reservation is given back, so
+     * nothing works on a ramcache that does not match the database. */
+    if (ramcache_size(&current_tcmh) > (size_t)tc_stat.ramcache_allocated)
+    {
+        int handle = tcramcache.handle;
+        tcramcache.hdr = NULL;
+        tcramcache.handle = 0;
+        tc_stat.ramcache_allocated = 0;
+        core_free(handle);
+        return;
+    }
+#endif
+
     cpu_boost(true);
 
     /* At first we should load the cache (if exists). */
@@ -5239,6 +5608,16 @@ static bool NO_INLINE db_file_exists(const char* filename)
     snprintf(buf, sizeof(buf), "%s/%s", tc_stat.db_path, filename);
 
     return file_exists(buf);
+}
+
+/* After a database update the album list covers follow: new or changed
+ * artwork, also image files that changed without a database commit. */
+static void covers_follow_update(void)
+{
+#ifdef IPOD_6G
+    if (tc_stat.ready && !tc_stat.commit_delayed)
+        albumart_list_refresh();
+#endif
 }
 
 static void tagcache_thread(void)
@@ -5304,10 +5683,23 @@ static void tagcache_thread(void)
                 break;
 
             case Q_REBUILD:
+#ifdef IPOD_6G
+                /* Stop thumbnail searches before removing their database files. */
+                tc_stat.ready = false;
+                while (write_lock)
+                    sleep(1);
+#endif
                 remove_files();
                 remove_db_file(TAGCACHE_FILE_TEMP);
                 tagcache_build();
+                covers_follow_update();
                 break;
+
+#ifdef IPOD_6G
+            case Q_FLUSH_NUMERIC:
+                run_command_queue(true);
+                break;
+#endif
 
             case Q_UPDATE:
                 tagcache_build();
@@ -5315,6 +5707,7 @@ static void tagcache_thread(void)
                 load_ramcache();
 #endif
                 check_deleted_file_refs(true);
+                covers_follow_update();
                 break ;
 
             case Q_START_SCAN:
@@ -5331,7 +5724,10 @@ static void tagcache_thread(void)
                     if (global_settings.tagcache_ram == TAGCACHE_RAM_ON)
                         check_deleted_file_refs(global_settings.tagcache_autoupdate);
                     if (tc_stat.ramcache && global_settings.tagcache_autoupdate)
+                    {
                         tagcache_build();
+                        covers_follow_update();
+                    }
                 }
                 else
 #endif /* HAVE_RC_RAMCACHE */
@@ -5343,6 +5739,7 @@ static void tagcache_thread(void)
                        or target is flash based, but do it anyway for
                        consistency. */
                     check_deleted_file_refs(true);
+                    covers_follow_update();
                 }
 
                 logf("tagcache check done");
@@ -5519,6 +5916,264 @@ int tagcache_get_commit_step(void)
 {
     return tc_stat.commit_step;
 }
+#ifdef IPOD_6G
+void tagcache_get_db_id(int32_t *commitid, int32_t *entries,
+                        int32_t *datasize)
+{
+    *commitid = current_tcmh.commitid;
+    *entries = current_tcmh.tch.entry_count;
+    *datasize = current_tcmh.tch.datasize;
+}
+
+bool tagcache_for_each_entry(int tag_a, int tag_b,
+                             bool (*fn)(int idx_id, int32_t seek_a,
+                                        int32_t seek_b, void *data),
+                             void *data)
+{
+    if (!tc_stat.ready || tc_stat.commit_step != 0)
+        return false;
+
+#ifdef HAVE_TC_RAMCACHE
+    if (tc_stat.ramcache)
+    {
+        int count = current_tcmh.tch.entry_count;
+        for (int i = 0; i < count; i++)
+        {
+            /* the indices are movable: copy what is needed, then unlock */
+            tcrc_buffer_lock();
+            const struct index_entry *idx = &tcramcache.hdr->indices[i];
+            bool deleted = idx->flag & FLAG_DELETED;
+            int32_t a = idx->tag_seek[tag_a];
+            int32_t b = tag_b >= 0 ? idx->tag_seek[tag_b] : 0;
+            tcrc_buffer_unlock();
+            if (!deleted && !fn(i, a, b, data))
+                return false;
+        }
+        return true;
+    }
+#endif
+
+    struct master_header hdr;
+    int fd = open_master_fd(&hdr, false);
+    if (fd < 0)
+        return false;
+    /* read the master index in blocks, not entry by entry */
+    struct index_entry entries[16];
+    int count = hdr.tch.entry_count;
+    bool okay = true;
+    for (int i = 0; okay && i < count; )
+    {
+        int n = MIN((int)ARRAYLEN(entries), count - i);
+        if (read_index_entries(fd, entries, n) != (ssize_t)(n * sizeof(entries[0])))
+        {
+            okay = false;
+            break;
+        }
+        for (int k = 0; okay && k < n; k++, i++)
+        {
+            if (entries[k].flag & FLAG_DELETED)
+                continue;
+            okay = fn(i, entries[k].tag_seek[tag_a],
+                      tag_b >= 0 ? entries[k].tag_seek[tag_b] : 0, data);
+        }
+        yield();
+    }
+    close(fd);
+    return okay;
+}
+#endif
+#ifdef IPOD_6G
+int tagcache_count_albums(int media)
+{
+    static struct tagcache_search tcs;
+    static char buf[TAG_MAXLEN + 32];
+
+    if (media < 0 || media >= TAGCACHE_MEDIA_COUNT ||
+        !tc_stat.ready || tc_stat.commit_step != 0)
+        return -1;
+    if (album_count[media] >= 0 &&
+        album_count_commitid[media] == current_tcmh.commitid &&
+        album_count_entries[media] == current_tcmh.tch.entry_count)
+        return album_count[media];
+
+    /* the album file holds every album name once; the search returns those
+     * that tracks of this media type use */
+    if (!tagcache_search(&tcs, tag_album))
+        return -1;
+    tagcache_search_set_media(&tcs, media);
+    int count = 0, n = 0;
+    while (tagcache_get_next(&tcs, buf, sizeof(buf)))
+    {
+        if (strcmp(buf, UNTAGGED))
+            count++;
+        if (!(++n & 63))
+            yield();
+    }
+    tagcache_search_finish(&tcs);
+
+    album_count[media] = count;
+    album_count_commitid[media] = current_tcmh.commitid;
+    album_count_entries[media] = current_tcmh.tch.entry_count;
+    return count;
+}
+
+/* Heard podcasts and audiobooks (docs/ipod6g-database-media-types.md): a
+ * track is heard once its play count is above 0, i.e. it played for 15 s
+ * or to its end. tagtree_track_finish_event() records that for these media
+ * types even without "gather runtime data". */
+
+static bool db_idle_entry(int idx_id, struct index_entry *idx)
+{
+    return tc_stat.ready && tc_stat.commit_step == 0 &&
+           idx_id >= 0 && idx_id < current_tcmh.tch.entry_count &&
+           get_index(-1, idx_id, idx, true);
+}
+
+/* The media type of track idx_id, -1 if there is none */
+int tagcache_entry_media(int idx_id)
+{
+    struct index_entry idx;
+    return db_idle_entry(idx_id, &idx) ? media_of_flag(idx.flag) : -1;
+}
+
+/* 1 if podcast or audiobook track idx_id was heard, 0 if not, -1 for music
+ * and if there is no such track */
+int tagcache_entry_heard(int idx_id)
+{
+    struct index_entry idx;
+    if (!db_idle_entry(idx_id, &idx) ||
+        media_of_flag(idx.flag) == TAGCACHE_MEDIA_MUSIC)
+        return -1;
+    return idx.tag_seek[tag_playcount] > 0;
+}
+
+static inline bool unheard_in(const struct index_entry *idx, int media,
+                              int tag, int32_t seek)
+{
+    return !(idx->flag & FLAG_DELETED) && media_of_flag(idx->flag) == media &&
+           idx->tag_seek[tag] == seek && idx->tag_seek[tag_playcount] == 0;
+}
+
+/* Tracks of the media type with tag_seek[tag] == seek (e.g. an album) that
+ * were not heard, without track skip_idx; -1 if the database is busy */
+int tagcache_count_unheard(int media, int tag, int32_t seek, int skip_idx)
+{
+    int count = 0;
+    if (!tc_stat.ready || tc_stat.commit_step != 0 ||
+        tag < 0 || tag >= TAG_COUNT || TAGCACHE_IS_NUMERIC(tag))
+        return -1;
+
+#ifdef HAVE_TC_RAMCACHE
+    if (tc_stat.ramcache)
+    {
+        tcrc_buffer_lock();
+        for (int i = 0; i < current_tcmh.tch.entry_count; i++)
+        {
+            if (i != skip_idx &&
+                unheard_in(&tcramcache.hdr->indices[i], media, tag, seek))
+                count++;
+        }
+        tcrc_buffer_unlock();
+        return count;
+    }
+#endif
+
+    struct master_header tcmh;
+    struct index_entry idx;
+    int fd = open_master_fd(&tcmh, false);
+    if (fd < 0)
+        return -1;
+    for (int i = 0; i < tcmh.tch.entry_count; i++)
+    {
+        if (read_index_entries(fd, &idx, 1) != sizeof(struct index_entry))
+            break;
+        if (i != skip_idx && unheard_in(&idx, media, tag, seek))
+            count++;
+    }
+    close(fd);
+    return count;
+}
+
+#ifndef __PCTOOL__
+/* "Mark as unheard": forgets that tracks were played (play count, play
+ * time, last played, resume position). idx_id >= 0: that track, else every
+ * track of the media type with tag_seek[tag] == seek. Returns the number of
+ * tracks changed, -1 if the database is busy. */
+int tagcache_mark_unheard(int media, int tag, int32_t seek, int idx_id)
+{
+    static const int tags[] = { tag_playcount, tag_playtime, tag_lastplayed,
+                                tag_lastelapsed, tag_lastoffset };
+    struct master_header tcmh;
+    struct index_entry idx;
+    int changed = 0;
+
+    if (!tc_stat.ready || tc_stat.commit_step != 0 ||
+        (idx_id < 0 && (tag < 0 || tag >= TAG_COUNT ||
+                        TAGCACHE_IS_NUMERIC(tag))))
+        return -1;
+
+    /* queued updates first, they must not mark the tracks heard again */
+    run_command_queue(true);
+    mutex_lock(&command_queue_mutex);
+    int fd = open_master_fd(&tcmh, true);
+    if (fd < 0)
+    {
+        mutex_unlock(&command_queue_mutex);
+        return -1;
+    }
+    int first = idx_id >= 0 ? idx_id : 0;
+    int end = idx_id >= 0 ? MIN(idx_id + 1, tcmh.tch.entry_count)
+                          : tcmh.tch.entry_count;
+    for (int i = first; i < end; i++)
+    {
+        /* the copy on disk: the one in RAM may hold memory only flags */
+        if (!get_index(fd, i, &idx, false) ||
+            media_of_flag(idx.flag) != media ||
+            (idx_id < 0 && idx.tag_seek[tag] != seek))
+            continue;
+        bool reset = false;
+        for (size_t k = 0; k < ARRAYLEN(tags); k++)
+        {
+            if (idx.tag_seek[tags[k]] != 0)
+            {
+                idx.tag_seek[tags[k]] = 0;
+                reset = true;
+            }
+        }
+        if (reset)
+        {
+            idx.flag |= FLAG_DIRTYNUM;
+            if (write_index(fd, i, &idx))
+                changed++;
+        }
+    }
+    close(fd);
+    numeric_gen++;
+    mutex_unlock(&command_queue_mutex);
+    return changed;
+}
+
+void tagcache_flush_numeric(void)
+{
+    queue_post(&tagcache_queue, Q_FLUSH_NUMERIC, 0);
+}
+#endif /* !__PCTOOL__ */
+
+/* The media type of a file by its folder, -1 outside the media folders */
+int tagcache_path_media(const char *path)
+{
+    int i = media_dir_of(path);
+    return i < 0 ? -1 : media_of_flag(media_dirs[i].flag);
+}
+
+/* Changes whenever play counts and other numeric data may have changed */
+unsigned tagcache_numeric_generation(void)
+{
+    return numeric_gen + (unsigned)current_tcmh.commitid * 65599u +
+           (unsigned)current_tcmh.tch.entry_count;
+}
+#endif /* IPOD_6G */
+
 int tagcache_get_max_commit_step(void)
 {
     return (int)(SORTED_TAGS_COUNT)+1;

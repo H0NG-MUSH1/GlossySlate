@@ -38,6 +38,14 @@ void sb_skin_update(enum screen_type screen, bool force);
 
 void sb_skin_set_update_delay(int delay);
 void sb_skin_force_next_update(void);
+#ifdef IPOD_6G
+/* duration of the last status bar update and the longest since the last
+ * reset, in microseconds (debug screen "Skin engine usage") */
+void sb_skin_update_times(unsigned *last_us, unsigned *max_us, bool reset);
+#endif
+#ifdef IPOD_6G
+struct viewport *sb_skin_peek_info_vp(enum screen_type screen);
+#endif
 bool sb_set_title_text(const char* title, enum themable_icons icon, enum screen_type screen);
 bool sb_set_persistent_title(const char* title, enum themable_icons icon,
                              enum screen_type screen);

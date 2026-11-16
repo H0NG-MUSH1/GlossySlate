@@ -55,6 +55,24 @@
 #include "pathfuncs.h"
 #include "filetree.h"
 #include "tagtree.h"
+#ifdef IPOD_6G
+#include "albumart_list.h"
+
+static void tree_draw_albumart(int item, void *data, int x, int y)
+{
+    struct albumart_list_key key;
+    int special = tagtree_album_special_entry(data, item);
+    if (special >= 0)
+        albumart_list_draw_special(special, x, y);
+    else if (tagtree_album_art_key(data, item, &key))
+        albumart_list_draw(&key, x, y);
+}
+
+static const char *tree_get_albumartist(int item, void *data)
+{
+    return tagtree_album_artist_name(data, item);
+}
+#endif
 #ifdef HAVE_RECORDING
 #include "recorder/recording.h"
 #endif
@@ -94,6 +112,13 @@ static bool start_wps = false;
 static int curr_context = false;/* id3db or tree*/
 
 static int dirbrowse(void);
+/* Database level at which "back" leaves the browser; see
+ * tree_set_id3db_exit_level() */
+static int id3db_exit_level;
+void tree_set_id3db_exit_level(int level)
+{
+    id3db_exit_level = level;
+}
 static int ft_play_dirname(char* name);
 static int ft_play_filename(char *dir, char *file, int attr);
 static void say_filetype(int attr);
@@ -202,6 +227,72 @@ static enum themable_icons tree_get_fileicon(int selected_item, void * data)
         return filetype_get_icon(entry->attr);
     }
 }
+
+#ifdef IPOD_6G
+/* folders and database entries that open another level end in an arrow
+ * if the theme asks for it (list_item_opens in apps/gui/list.h) */
+static bool tree_item_opens(int selected_item, void *data)
+{
+    struct tree_context *local_tc = (struct tree_context *)data;
+#ifdef HAVE_TAGCACHE
+    if (*(local_tc->dirfilter) == SHOW_ID3DB)
+        return tagtree_get_attr(local_tc) != FILE_ATTR_AUDIO;
+#endif
+    struct entry *entry = get_valid_entry(__func__, local_tc, selected_item);
+    return entry && (entry->attr & ATTR_DIRECTORY);
+}
+
+/* the speaker at the playing track, the dot at podcasts and audiobooks not
+ * heard yet (list_item_mark in apps/gui/list.h) */
+static int tree_item_mark(int selected_item, void *data)
+{
+    struct tree_context *local_tc = (struct tree_context *)data;
+#ifdef HAVE_TAGCACHE
+    if (*(local_tc->dirfilter) == SHOW_ID3DB)
+        return tagtree_item_mark(local_tc, selected_item);
+#endif
+    struct mp3entry *id3 = (audio_status() & AUDIO_STATUS_PLAY) ?
+                           audio_current_track() : NULL;
+    struct entry *entry = get_valid_entry(__func__, local_tc, selected_item);
+    if (!id3 || !entry || (entry->attr & ATTR_DIRECTORY))
+        return LIST_MARK_NONE;
+
+    /* the same file, whether the paths name the volume or not */
+    const char *playing = id3->path, *dir = local_tc->currdir;
+#ifdef HAVE_MULTIVOLUME
+    path_strip_volume(id3->path, &playing, false);
+    path_strip_volume(local_tc->currdir, &dir, false);
+#endif
+    size_t len = strlen(dir);
+    while (len > 0 && dir[len - 1] == PATH_SEPCH)
+        len--;
+    return (!strncmp(playing, dir, len) && playing[len] == PATH_SEPCH &&
+            !strcmp(&playing[len + 1], entry->name)) ?
+           LIST_MARK_PLAYING : LIST_MARK_NONE;
+}
+
+/* Whether the marks may have changed since the last call: another track
+ * plays, the playing one passed 15 s, or play counts changed */
+static bool tree_marks_changed(void)
+{
+    static unsigned long last;
+    unsigned long state = 0;
+    struct mp3entry *id3 = (audio_status() & AUDIO_STATUS_PLAY) ?
+                           audio_current_track() : NULL;
+    if (id3)
+    {
+        for (const char *p = id3->path; *p; p++)
+            state = state * 33 + (unsigned char)*p;
+        state = state * 2 + (id3->elapsed >= 15 * 1000) + 1;
+    }
+#ifdef HAVE_TAGCACHE
+    state = state * 31 + tagcache_numeric_generation();
+#endif
+    bool changed = state != last;
+    last = state;
+    return changed;
+}
+#endif
 
 static int tree_voice_cb(int selected_item, void * data)
 {
@@ -393,6 +484,11 @@ static int tree_get_file_position(char * filename)
     return(ret);
 }
 
+#ifdef IPOD_6G
+/* true while dirbrowse() loads its first directory */
+static bool first_dir_load;
+#endif
+
 /*
  * Called when a new dir is loaded (for example when returning from other apps ...)
  * also completely redraws the tree
@@ -519,6 +615,25 @@ static int update_dir(void)
     gui_synclist_set_title(list, P2STR((unsigned char*)title), icon);
 
     gui_synclist_set_nb_items(list, tc.filesindir);
+#ifdef IPOD_6G
+    /* a directory (re)loaded without scrolling shows no scrollbar */
+    list->scrollbar_tick = 0;
+    list->callback_item_opens = tree_item_opens;
+    list->callback_item_mark =
+#ifdef HAVE_TAGCACHE
+        (id3db && !tagtree_has_item_marks(&tc)) ? NULL :
+#endif
+        tree_item_mark;
+    if (id3db && tc.filesindir > tc.special_entry_count &&
+        tagtree_album_art_key(&tc, tc.special_entry_count,
+                                       &(struct albumart_list_key){0}))
+    {
+        list->minimum_line_height = ALBUMART_LIST_SIZE;
+        list->callback_draw_albumart = tree_draw_albumart;
+        list->callback_get_albumartist = tree_get_albumartist;
+        list_init_item_height(list, SCREEN_MAIN);
+    }
+#endif
     gui_synclist_set_icon_callback(list,
                             global_settings.show_icons?tree_get_fileicon:NULL);
 #ifdef HAVE_TAGCACHE
@@ -534,6 +649,14 @@ static int update_dir(void)
         tc.selected_item=tc.filesindir-1;
 
     gui_synclist_select_item(list, tc.selected_item);
+#ifdef IPOD_6G
+    /* rockbox_browse() of an empty folder only says "No Files" and goes
+     * back (dirbrowse()). Drawing the empty list first cleared it in the
+     * frame buffer, not on the display, and the popup, which puts its area
+     * on the display, showed that white around its panel. */
+    if (first_dir_load && tc.filesindir == 0 && *tc.dirfilter > NUM_FILTER_MODES)
+        return tc.filesindir;
+#endif
     gui_synclist_draw(list);
     gui_synclist_speak_item(list);
     return tc.filesindir;
@@ -749,7 +872,13 @@ static int dirbrowse(void)
 #endif
 
     start_wps = false;
+#ifdef IPOD_6G
+    first_dir_load = true;
     numentries = update_dir();
+    first_dir_load = false;
+#else
+    numentries = update_dir();
+#endif
     reload_dir = false;
     if (numentries == -1)
         return exit_to_new_screen(GO_TO_PREVIOUS);  /* currdir is not a directory */
@@ -772,6 +901,12 @@ static int dirbrowse(void)
         oldbutton = button;
         gui_synclist_do_button(&tree_lists, &button);
         tc.selected_item = gui_synclist_get_sel_pos(&tree_lists);
+#ifdef IPOD_6G
+        /* the marks follow playback (tree_item_mark()) */
+        if (tree_marks_changed() && tree_lists.callback_item_mark &&
+            button == ACTION_NONE)
+            gui_synclist_draw(&tree_lists);
+#endif
         int customaction = ONPLAY_NO_CUSTOMACTION;
         bool do_restore_display = true;
         #ifdef HAVE_TAGCACHE
@@ -831,7 +966,8 @@ static int dirbrowse(void)
                     exit_func = true;
                     break;
                 }
-                if ((*tc.dirfilter == SHOW_ID3DB && tc.dirlevel == 0) ||
+                if ((*tc.dirfilter == SHOW_ID3DB &&
+                     tc.dirlevel <= id3db_exit_level) ||
                     ((*tc.dirfilter != SHOW_ID3DB && !strcmp(currdir,"/"))))
                 {
                     if (oldbutton == ACTION_TREE_PGLEFT)

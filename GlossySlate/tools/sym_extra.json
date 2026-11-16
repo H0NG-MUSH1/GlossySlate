@@ -1,0 +1,4 @@
+{
+ "podcast": "\n      <g transform=\"translate(-2 4)\">\n        <path d=\"M66 42a14 14 0 0 1 28 0V74a14 14 0 0 1 -28 0Z\" fill=\"#DFE6F3\"></path>\n        <path d=\"M54 70A26 26 0 0 0 106 70M80 96V118M64 120H96\" fill=\"none\" stroke=\"#DFE6F3\" stroke-width=\"8\" stroke-linecap=\"round\"></path>\n        <path d=\"M46.9 83.9A42 42 0 0 1 46.9 32.1M31.9 90.4A58 58 0 0 1 31.9 25.6M113.1 32.1A42 42 0 0 1 113.1 83.9M128.1 25.6A58 58 0 0 1 128.1 90.4\" fill=\"none\" stroke=\"#DFE6F3\" stroke-width=\"8\" stroke-linecap=\"round\"></path>\n      </g>\n    ",
+ "book": "\n      <g transform=\"translate(4.7 0.9) scale(.145)\" fill=\"#DFE6F3\">\n        <path d=\"M275 151L340 104H872V835H824V152Z\"></path>\n        <path d=\"M140 148L205 104H262V132H224L188 160V815H140Z\"></path>\n        <path d=\"M205 170L735 266V935L265 836C252 818 232 800 205 812Z\"></path>\n      </g>\n    "
+}

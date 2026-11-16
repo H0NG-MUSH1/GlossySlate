@@ -32,6 +32,12 @@
 #include "sound.h"
 #include "pcm_sink.h"
 #include "settings.h"
+#if defined(HAVE_MIKEY_REMOTE) && !defined(SIMULATOR) && !defined(__PCTOOL__)
+#include "mikey-target.h"
+#define MIKEY_REMOTE_CALLBACK mikey_set_remote_enabled
+#else
+#define MIKEY_REMOTE_CALLBACK NULL
+#endif
 #ifdef HAVE_COMPOSITE_VIDEO_OUT
 #include "videoout.h"
 #endif
@@ -1236,18 +1242,17 @@ const struct settings_list settings[] = {
                   LANG_SHUFFLE, false, "shuffle", shuffle_playlist_callback),
 
     CHOICE_SETTING(F_CB_ON_SELECT_ONLY|F_CB_ONLY_IF_CHANGED, repeat_mode,
-                   LANG_REPEAT, REPEAT_OFF, "repeat", "off,all,one,shuffle"
+                   LANG_REPEAT, REPEAT_OFF, "repeat", "off,all,one"
 #ifdef AB_REPEAT_ENABLE
                    ",ab"
 #endif
                    , repeat_mode_callback,
 #ifdef AB_REPEAT_ENABLE
-                   5,
-#else
                    4,
+#else
+                   3,
 #endif
-                   ID2P(LANG_OFF), ID2P(LANG_ALL), ID2P(LANG_REPEAT_ONE),
-                   ID2P(LANG_SHUFFLE)
+                   ID2P(LANG_OFF), ID2P(LANG_ALL), ID2P(LANG_REPEAT_ONE)
 #ifdef AB_REPEAT_ENABLE
                    ,ID2P(LANG_REPEAT_AB)
 #endif
@@ -1321,7 +1326,16 @@ const struct settings_list settings[] = {
 #endif
     /* display */
      CHOICE_SETTING(F_TEMPVAR|F_THEMESETTING, cursor_style, LANG_INVERT_CURSOR,
- #ifdef HAVE_LCD_COLOR
+ #ifdef IPOD_6G
+                    3, "selector type",
+                    "pointer,bar (inverse),bar (color),bar (gradient),bar (gloss)",
+                    NULL, 5,
+                    ID2P(LANG_INVERT_CURSOR_POINTER),
+                    ID2P(LANG_INVERT_CURSOR_BAR),
+                    ID2P(LANG_INVERT_CURSOR_COLOR),
+                    ID2P(LANG_INVERT_CURSOR_GRADIENT),
+                    ID2P(LANG_INVERT_CURSOR_GLOSS)),
+ #elif defined(HAVE_LCD_COLOR)
                     3, "selector type",
                     "pointer,bar (inverse),bar (color),bar (gradient)", NULL, 4,
                     ID2P(LANG_INVERT_CURSOR_POINTER),
@@ -1333,10 +1347,23 @@ const struct settings_list settings[] = {
                     ID2P(LANG_INVERT_CURSOR_POINTER),
                     ID2P(LANG_INVERT_CURSOR_BAR)),
  #endif
+#ifdef IPOD_6G
+    /* Statusbar skins (Glossy Slate) use these two settings for the second
+     * line in their players (off: album and artist in turn, top: album,
+     * bottom: artist) and for the corners of album art (graphic: rounded,
+     * numeric: square); with a statusbar skin they have no other effect.
+     * Their titles say so; cfg names and values stay for the skins. */
+    CHOICE_SETTING(F_THEMESETTING|F_TEMPVAR|F_NEEDAPPLY, statusbar,
+                  LANG_PLAYER_SECOND_LINE, STATUSBAR_TOP, "statusbar",
+                  "off,top,bottom", NULL, 3, ID2P(LANG_ALBUM_AND_ARTIST),
+                  ID2P(LANG_SECOND_LINE_ALBUM),
+                  ID2P(LANG_SECOND_LINE_ARTIST)),
+#else
     CHOICE_SETTING(F_THEMESETTING|F_TEMPVAR|F_NEEDAPPLY, statusbar,
                   LANG_STATUS_BAR, STATUSBAR_TOP, "statusbar","off,top,bottom",
                   NULL, 3, ID2P(LANG_OFF), ID2P(LANG_STATUSBAR_TOP),
                   ID2P(LANG_STATUSBAR_BOTTOM)),
+#endif
 #ifdef HAVE_REMOTE_LCD
     CHOICE_SETTING(F_THEMESETTING|F_TEMPVAR|F_NEEDAPPLY, remote_statusbar,
                   LANG_REMOTE_STATUSBAR, STATUSBAR_TOP, "remote statusbar","off,top,bottom",
@@ -1365,13 +1392,60 @@ const struct settings_list settings[] = {
         INT(DEFAULT_THEME_SEPARATOR),"list separator color",UNUSED},
 #endif
 #endif
+#ifdef IPOD_6G
+    /* List styling for the themes of the iPod 6G, only in the theme cfg.
+     * The firmware has no values of its own: a theme cfg that leaves one
+     * out gets the default again (settings_load_config()), which is "-"
+     * (LIST_COLOR_FROM_THEME) for the colours, i.e. derived from the other
+     * colours of the theme (see list.c and line.c), no arrows and no
+     * inset. */
+    {F_T_INT|F_RGB|F_THEMESETTING, &global_settings.list_secondary_color, -1,
+        INT(LIST_COLOR_FROM_THEME), "list secondary color", UNUSED},
+    OFFON_SETTING(F_THEMESETTING, list_arrows, -1, false, "list arrows", NULL),
+    {F_T_INT|F_RGB|F_THEMESETTING, &global_settings.list_arrow_color, -1,
+        INT(LIST_COLOR_FROM_THEME), "list arrow color", UNUSED},
+    {F_T_INT|F_THEMESETTING, &global_settings.list_edge_inset, -1,
+        INT(0), "list edge inset", UNUSED},
+    {F_T_INT|F_RGB|F_THEMESETTING, &global_settings.lsg_top_color, -1,
+        INT(LIST_COLOR_FROM_THEME), "line selector gloss top color", UNUSED},
+    {F_T_INT|F_RGB|F_THEMESETTING, &global_settings.lsg_bottom_color, -1,
+        INT(LIST_COLOR_FROM_THEME), "line selector gloss bottom color",
+        UNUSED},
+    {F_T_INT|F_RGB|F_THEMESETTING, &global_settings.lsg_edge_color, -1,
+        INT(LIST_COLOR_FROM_THEME), "line selector gloss edge color",
+        UNUSED},
+    {F_T_INT|F_RGB|F_THEMESETTING, &global_settings.list_value_color, -1,
+        INT(LIST_COLOR_FROM_THEME), "list value color", UNUSED},
+    TEXT_SETTING(F_THEMESETTING|F_NEEDAPPLY, list_secondary_font_file,
+                 "list secondary font", "-", FONT_DIR "/", ".fnt"),
+    TEXT_SETTING(F_THEMESETTING|F_NEEDAPPLY, popup_font_file,
+                 "popup font", "-", FONT_DIR "/", ".fnt"),
+    TEXT_SETTING(F_THEMESETTING|F_NEEDAPPLY, popup_hint_font_file,
+                 "popup hint font", "-", FONT_DIR "/", ".fnt"),
+#endif
+#ifdef IPOD_6G
+    /* album art corners of the skins, see statusbar above */
+    CHOICE_SETTING(F_THEMESETTING, volume_type, LANG_ALBUMART_CORNERS, 0,
+                   "volume display", graphic_numeric, NULL, 2,
+                   ID2P(LANG_CORNERS_ROUNDED),
+                   ID2P(LANG_CORNERS_SQUARE)),
+#else
     CHOICE_SETTING(F_THEMESETTING, volume_type, LANG_VOLUME_DISPLAY, 0,
                    "volume display", graphic_numeric, NULL, 2,
                    ID2P(LANG_DISPLAY_GRAPHIC),
                    ID2P(LANG_DISPLAY_NUMERIC)),
+#endif
+#ifdef IPOD_6G
+    /* key lock of the skins: graphic shows a lock screen, numeric only the
+     * padlock; see statusbar above */
+    CHOICE_SETTING(F_THEMESETTING, battery_display, LANG_KEYLOCK, 0,
+                   "battery display", graphic_numeric, NULL, 2,
+                   ID2P(LANG_KEYLOCK_SCREEN), ID2P(LANG_KEYLOCK_NORMAL)),
+#else
     CHOICE_SETTING(F_THEMESETTING, battery_display, LANG_BATTERY_DISPLAY, 0,
                    "battery display", graphic_numeric, NULL, 2,
                    ID2P(LANG_DISPLAY_GRAPHIC), ID2P(LANG_DISPLAY_NUMERIC)),
+#endif
     CHOICE_SETTING(0, timeformat, LANG_TIMEFORMAT, 0,
         "time format", "24hour,12hour", NULL, 2,
         ID2P(LANG_24_HOUR_CLOCK), ID2P(LANG_12_HOUR_CLOCK)),
@@ -2206,6 +2280,10 @@ const struct settings_list settings[] = {
     OFFON_SETTING(0, unplug_autoresume,
                   LANG_HEADPHONE_UNPLUG_DISABLE_AUTORESUME, false,
                   "disable autoresume if phones not present",NULL),
+#endif
+#ifdef HAVE_MIKEY_REMOTE
+    OFFON_SETTING(0, headset_remote_control, LANG_HEADSET_REMOTE_CONTROL,
+                  true, "headset remote control", MIKEY_REMOTE_CALLBACK),
 #endif
     INT_SETTING(F_TIME_SETTING, pause_rewind, LANG_PAUSE_REWIND, 0,
                 "rewind duration on pause", UNIT_SEC, 0, 15, 1,

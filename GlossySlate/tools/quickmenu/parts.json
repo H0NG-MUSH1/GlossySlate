@@ -1,0 +1,400 @@
+[
+ {
+  "file": "background",
+  "width": 320,
+  "height": 240,
+  "x": 0,
+  "y": 0,
+  "board": "Quick menu",
+  "note": "Field #F7F8FA → #EDEFF3 (55 %) → #DFE3E9, opaque (24 bit)"
+ },
+ {
+  "file": "capsule_battery",
+  "width": 76,
+  "height": 25,
+  "x": 14,
+  "y": 14,
+  "element": {
+   "x": 14,
+   "y": 14,
+   "width": 76,
+   "height": 24
+  },
+  "board": "Quick menu",
+  "note": "Capsule for the battery level, empty (holds mini_battery and text 13 px bold)"
+ },
+ {
+  "file": "capsule_timer",
+  "width": 73,
+  "height": 25,
+  "x": 98,
+  "y": 14,
+  "element": {
+   "x": 98,
+   "y": 14,
+   "width": 73,
+   "height": 24
+  },
+  "board": "Quick menu",
+  "note": "Capsule for the sleep timer, empty (holds icon_moon and text 13 px bold)"
+ },
+ {
+  "file": "mini_battery",
+  "width": 18,
+  "height": 9,
+  "x": 25,
+  "y": 22,
+  "element": {
+   "x": 25,
+   "y": 22,
+   "width": 18,
+   "height": 9
+  },
+  "board": "Quick menu",
+  "note": "Battery in the capsule, level as in the design (82 %)"
+ },
+ {
+  "file": "icon_moon",
+  "width": 11,
+  "height": 11,
+  "x": 109,
+  "y": 20,
+  "element": {
+   "x": 109,
+   "y": 20,
+   "width": 11,
+   "height": 11
+  },
+  "board": "Quick menu",
+  "note": "Sleep timer"
+ },
+ {
+  "file": "icon_lock",
+  "width": 10,
+  "height": 12,
+  "x": 178,
+  "y": 20,
+  "element": {
+   "x": 178,
+   "y": 20,
+   "width": 10,
+   "height": 12
+  },
+  "board": "Quick menu",
+  "note": "Key lock on"
+ },
+ {
+  "file": "button_back",
+  "width": 24,
+  "height": 25,
+  "x": 282,
+  "y": 14,
+  "element": {
+   "x": 282,
+   "y": 14,
+   "width": 24,
+   "height": 24
+  },
+  "board": "Quick menu",
+  "note": "Round \"close\" button with arrow"
+ },
+ {
+  "file": "divider",
+  "width": 292,
+  "height": 2,
+  "x": 14,
+  "y": 58,
+  "element": {
+   "x": 14,
+   "y": 58,
+   "width": 292,
+   "height": 1
+  },
+  "board": "Quick menu",
+  "note": "Line #C9CFD8 with 1 px white below"
+ },
+ {
+  "file": "icon_volume",
+  "width": 16,
+  "height": 14,
+  "x": 14,
+  "y": 75,
+  "element": {
+   "x": 14,
+   "y": 75,
+   "width": 16,
+   "height": 14
+  },
+  "board": "Quick menu",
+  "note": "Volume"
+ },
+ {
+  "file": "icon_brightness",
+  "width": 16,
+  "height": 16,
+  "x": 14,
+  "y": 110,
+  "element": {
+   "x": 14,
+   "y": 110,
+   "width": 16,
+   "height": 16
+  },
+  "board": "Quick menu",
+  "note": "Brightness"
+ },
+ {
+  "file": "slider_track",
+  "width": 210,
+  "height": 10,
+  "x": 40,
+  "y": 78,
+  "element": {
+   "x": 40,
+   "y": 78,
+   "width": 210,
+   "height": 9
+  },
+  "board": "Quick menu",
+  "note": "Slider track without fill"
+ },
+ {
+  "file": "slider_fill",
+  "width": 210,
+  "height": 9,
+  "x": 40,
+  "y": 78,
+  "element": {
+   "x": 40,
+   "y": 78,
+   "width": 210,
+   "height": 9
+  },
+  "board": "Quick menu",
+  "note": "Fill over the full width; bar image for %pv/%pb"
+ },
+ {
+  "file": "slider_knob",
+  "width": 20,
+  "height": 20,
+  "x": 160,
+  "y": 72,
+  "element": {
+   "x": 161,
+   "y": 72,
+   "width": 18,
+   "height": 18
+  },
+  "board": "Quick menu",
+  "note": "Knob; its centre sits on the end of the fill"
+ },
+ {
+  "file": "switch_on",
+  "width": 142,
+  "height": 68,
+  "x": 13,
+  "y": 148,
+  "element": {
+   "x": 14,
+   "y": 148,
+   "width": 140,
+   "height": 66
+  },
+  "board": "Quick menu",
+  "note": "Switch on (accent blue), empty"
+ },
+ {
+  "file": "switch_off",
+  "width": 142,
+  "height": 68,
+  "x": 165,
+  "y": 148,
+  "element": {
+   "x": 166,
+   "y": 148,
+   "width": 140,
+   "height": 66
+  },
+  "board": "Quick menu",
+  "note": "Switch off, empty"
+ },
+ {
+  "file": "arrow_left_white",
+  "width": 5,
+  "height": 9,
+  "x": 23,
+  "y": 177,
+  "element": {
+   "x": 23,
+   "y": 177,
+   "width": 5,
+   "height": 9
+  },
+  "board": "Quick menu",
+  "note": "Arrow in the active switch (white 75 %)"
+ },
+ {
+  "file": "arrow_right_white",
+  "width": 5,
+  "height": 9,
+  "x": 292,
+  "y": 177,
+  "element": {
+   "x": 292,
+   "y": 177,
+   "width": 5,
+   "height": 9
+  },
+  "board": "Quick menu",
+  "note": "as above, right"
+ },
+ {
+  "file": "arrow_left_grey",
+  "width": 5,
+  "height": 9,
+  "x": 23,
+  "y": 177,
+  "element": {
+   "x": 23,
+   "y": 177,
+   "width": 5,
+   "height": 9
+  },
+  "board": "Quick menu",
+  "note": "Arrow in the inactive switch"
+ },
+ {
+  "file": "arrow_right_grey",
+  "width": 5,
+  "height": 9,
+  "x": 292,
+  "y": 177,
+  "element": {
+   "x": 292,
+   "y": 177,
+   "width": 5,
+   "height": 9
+  },
+  "board": "Quick menu",
+  "note": "Arrow in the inactive switch"
+ },
+ {
+  "file": "icon_shuffle_white",
+  "width": 22,
+  "height": 16,
+  "x": 73,
+  "y": 154,
+  "element": {
+   "x": 73,
+   "y": 154,
+   "width": 22,
+   "height": 16
+  },
+  "board": "Quick menu",
+  "note": "Shuffle, on the active switch"
+ },
+ {
+  "file": "icon_shuffle_dark",
+  "width": 22,
+  "height": 16,
+  "x": 73,
+  "y": 154,
+  "element": {
+   "x": 73,
+   "y": 154,
+   "width": 22,
+   "height": 16
+  },
+  "board": "Quick menu",
+  "note": "Shuffle, on the inactive switch"
+ },
+ {
+  "file": "icon_repeat_white",
+  "width": 22,
+  "height": 16,
+  "x": 225,
+  "y": 154,
+  "element": {
+   "x": 225,
+   "y": 154,
+   "width": 22,
+   "height": 16
+  },
+  "board": "Quick menu",
+  "note": "Repeat, on the active switch"
+ },
+ {
+  "file": "icon_repeat_dark",
+  "width": 22,
+  "height": 16,
+  "x": 225,
+  "y": 154,
+  "element": {
+   "x": 225,
+   "y": 154,
+   "width": 22,
+   "height": 16
+  },
+  "board": "Quick menu",
+  "note": "Repeat, on the inactive switch"
+ },
+ {
+  "file": "free_button",
+  "width": 128,
+  "height": 43,
+  "x": 96,
+  "y": 68,
+  "element": {
+   "x": 96,
+   "y": 68,
+   "width": 128,
+   "height": 42
+  },
+  "board": "Quick menu · free assignment",
+  "note": "Variant \"free assignment\": button 128 × 42, empty (label 11 px #5B6371, value 14 px #14171C)"
+ },
+ {
+  "file": "free_directions",
+  "width": 32,
+  "height": 32,
+  "x": 144,
+  "y": 123,
+  "element": {
+   "x": 144,
+   "y": 123,
+   "width": 32,
+   "height": 32
+  },
+  "board": "Quick menu · free assignment",
+  "note": "Variant \"free assignment\": direction cross in the middle"
+ },
+ {
+  "file": "capsule_left",
+  "width": 12,
+  "height": 25,
+  "board": "Quick menu",
+  "note": "Capsule in three parts: left end (radius 12)"
+ },
+ {
+  "file": "capsule_middle",
+  "width": 1,
+  "height": 25,
+  "board": "Quick menu",
+  "note": "Middle, 1 px wide, repeat as often as needed"
+ },
+ {
+  "file": "capsule_right",
+  "width": 12,
+  "height": 25,
+  "board": "Quick menu",
+  "note": "right end"
+ },
+ {
+  "file": "mini_battery_levels",
+  "width": 18,
+  "height": 108,
+  "frames": 12,
+  "board": "Quick menu",
+  "note": "12 frames like status_battery.bmp: 1 unknown, 2–12 = 0 to 100 %; fill round(level × 14), red below 20 %, red frame at 0 %"
+ }
+]

@@ -60,6 +60,9 @@ talk.c
 tree.c
 #ifdef HAVE_TAGCACHE
 tagtree.c
+#ifdef IPOD_6G
+albumart_list.c
+#endif
 #endif
 filetree.c
 #ifdef IPOD_ACCESSORY_PROTOCOL
@@ -96,6 +99,9 @@ gui/mask_select.c
 gui/wps.c
 gui/scrollbar.c
 gui/splash.c
+#ifdef IPOD_6G
+gui/popup.c
+#endif
 gui/statusbar.c
 gui/statusbar-skinned.c
 #if (CONFIG_PLATFORM&PLATFORM_ANDROID)
@@ -112,6 +118,9 @@ gui/skin_engine/skin_engine.c
 gui/skin_engine/skin_parser.c
 gui/skin_engine/skin_render.c
 gui/skin_engine/skin_tokens.c
+#if defined(IPOD_6G) && defined(HAVE_ALBUMART)
+gui/skin_engine/skin_albumart_fx.c
+#endif
 #ifdef HAVE_TOUCHSCREEN
 gui/skin_engine/skin_touchsupport.c
 #endif

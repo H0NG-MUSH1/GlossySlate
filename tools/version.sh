@@ -41,19 +41,20 @@ gitversion() {
 if [ -n "$1" ]; then TOP=$1; else TOP=..; fi
 
 # setting VERSION var on commandline has precedence
-if [ -z $VERSION ]; then
+if [ -z "$VERSION" ]; then
     # If the VERSIONFILE exisits we use that
     VERSIONFILE=docs/VERSION
-    if [ -r $TOP/$VERSIONFILE ]; then
-        VER=`cat $TOP/$VERSIONFILE`;
+    if [ -r "$TOP/$VERSIONFILE" ]; then
+        # An explicit version file is the complete, user-visible version.
+        VERSION=`cat "$TOP/$VERSIONFILE"`;
     else
         # Ok, we need to derive it from the Version Control system
 	    VER=`gitversion $TOP`
     fi
-if [ -z $SOURCE_DATE_EPOCH ]; then
-	VERSION=$VER-`date -u +%y%m%d`
+if [ -z "$SOURCE_DATE_EPOCH" ]; then
+	VERSION=${VERSION:-$VER-`date -u +%y%m%d`}
 else
-	VERSION=$VER-`date -d @$SOURCE_DATE_EPOCH -u +%y%m%d`
+	VERSION=${VERSION:-$VER-`date -d @$SOURCE_DATE_EPOCH -u +%y%m%d`}
 fi
 fi
 echo $VERSION

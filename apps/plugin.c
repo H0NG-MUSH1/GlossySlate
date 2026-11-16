@@ -896,6 +896,7 @@ static const struct plugin_api rockbox_api = {
     /* new stuff at the end, sort into place next time
        the API gets incompatible */
     settings_apply,
+    font_load_ex,
 };
 
 static int plugin_buffer_handle;

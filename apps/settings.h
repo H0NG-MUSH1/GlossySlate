@@ -103,13 +103,15 @@ enum {
     FOLDER_ADVANCE_RANDOM,
 };
 
-/* repeat mode options */
+/* repeat mode options. This fork has no "repeat shuffled" (Rockbox: 3, the
+ * playlist shuffled anew at its end): repeat and shuffle are set apart.
+ * Where the mode leaves the firmware as a number, Rockbox's values stay
+ * (skin tag %mm, bookmark files); A-B is 4 there. */
 enum
 {
     REPEAT_OFF = 0,
     REPEAT_ALL,
     REPEAT_ONE,
-    REPEAT_SHUFFLE,
 #ifdef AB_REPEAT_ENABLE
     REPEAT_AB,
 #endif
@@ -364,6 +366,11 @@ struct system_status
     char browse_last_folder[MAX_PATH];/* only saved if keep_directory = true */
 };
 
+#ifdef IPOD_6G
+/* a list colour of the theme cfg that is "-": derived from its other colours */
+#define LIST_COLOR_FROM_THEME (-1)
+#endif
+
 struct user_settings
 {
     /* audio settings */
@@ -527,6 +534,9 @@ struct user_settings
     int  unplug_mode; /* pause on headphone unplug */
     bool unplug_autoresume; /* disable auto-resume if no phones */
 #endif
+#ifdef HAVE_MIKEY_REMOTE
+    bool headset_remote_control;
+#endif
 
 #ifdef HAVE_QUICKSCREEN
     const struct settings_list *qs_items[QUICKSCREEN_ITEM_COUNT];
@@ -645,7 +655,7 @@ struct user_settings
 #endif
 
     /* playlist/playback settings */
-    int  repeat_mode; /* 0=off 1=repeat all 2=repeat one 3=shuffle 4=ab */
+    int  repeat_mode; /* 0=off 1=repeat all 2=repeat one 3=ab */
     int  next_folder; /* move to next folder */
     bool constrain_next_folder; /* whether next_folder is constrained to
                                    directories within start_directory */
@@ -952,6 +962,24 @@ struct user_settings
 #ifdef HAVE_REMOTE_LCD
     unsigned char rwrs_file[MAX_FILENAME+1];  /* last remote-wrs */
 #endif
+#endif
+#ifdef IPOD_6G
+    /* List styling that the theme cfg sets, see settings_list.c. At the end
+     * to keep the layout plugins see. The colours are
+     * LIST_COLOR_FROM_THEME ("-" in the cfg) unless the theme sets them. */
+    int list_secondary_color; /* artists in album rows, values of settings */
+    bool list_arrows;         /* arrow at the end of rows that open a level */
+    int list_arrow_color;
+    int list_edge_inset;      /* text inset of lists at the screen edge */
+    int lsg_top_color;        /* "bar (gloss)": colour at 45 % of the bar */
+    int lsg_bottom_color;     /* colour at 55 % */
+    int lsg_edge_color;       /* 1 px line at the bottom of the bar */
+    int list_value_color;     /* values of settings, else secondary colour */
+    /* font of the second line of album rows (artist); "-": the list font */
+    unsigned char list_secondary_font_file[MAX_FILENAME+1];
+    /* fonts of popups (gui/popup.c): text and key hints; "-": the UI font */
+    unsigned char popup_font_file[MAX_FILENAME+1];
+    unsigned char popup_hint_font_file[MAX_FILENAME+1];
 #endif
 };
 

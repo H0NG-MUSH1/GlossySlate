@@ -21,6 +21,7 @@
 
 #include "config.h"
 #include "system.h"
+#include "kernel.h"
 #include "audio.h"
 #include "s5l87xx.h"
 #include "panic.h"
@@ -225,6 +226,28 @@ static void sink_dma_init(void)
     sink_set_freq(HW_FREQ_DEFAULT);
 }
 
+#ifdef IPOD_6G
+/* With the transmitter stopped (I2STXCOM 0xa: transmit mode on, interface
+ * and DMA off) I2S0 keeps sending what it last had: after a playback the
+ * faded-out end, silence, but after a boot whatever it came up with. The
+ * CODEC, the I2S clock master, played that as loud white noise on the
+ * headphones from audiohw_postinit() until the first playback. So send a
+ * few milliseconds of silence first and stop while it still flows, as a
+ * playback does, then unmute the CODEC. */
+static void sink_dma_postinit(void)
+{
+    memset(dblbuf, 0, sizeof(dblbuf));
+    I2STXCOM = I2STXCOM_START;
+    /* 3 x 2 KB, about 35 ms at 44.1 kHz; the task ring holds 4 */
+    play_queue_dma(dblbuf[0], WATERMARK_BYTES, NULL);
+    play_queue_dma(dblbuf[1], WATERMARK_BYTES, NULL);
+    play_queue_dma(dblbuf[0], WATERMARK_BYTES, NULL);
+    sleep(HZ/50);
+    sink_dma_stop();
+    audiohw_postinit();
+}
+#endif
+
 #ifdef HAVE_PCM_DMA_ADDRESS
 void * pcm_dma_addr(void *addr)
 {
@@ -241,7 +264,11 @@ struct pcm_sink builtin_pcm_sink = {
     },
     .ops = {
         .init     = sink_dma_init,
+#ifdef IPOD_6G
+        .postinit = sink_dma_postinit,
+#else
         .postinit = audiohw_postinit,
+#endif
         .set_freq = sink_set_freq,
         .lock     = sink_lock,
         .unlock   = sink_unlock,

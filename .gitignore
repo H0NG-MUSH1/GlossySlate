@@ -339,3 +339,6 @@ __pycache__
 # /utils/jztool/
 /utils/jztool/build*
 /utils/jztool/jztool.*
+
+# macOS Finder
+.DS_Store

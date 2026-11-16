@@ -942,6 +942,8 @@ static inline void do_softlock(action_last_t *last, action_cur_t *cur)
 #endif
         action_handle_backlight(true, false);
 
+#ifndef IPOD_6G /* GlossySlate: no popup, the theme shows the lock (status
+                  bar or lock screen) */
         if (!has_flag(last->softlock_mask, SEL_ACTION_ALLNONOTIFY))
         {
 #ifdef HAVE_BACKLIGHT
@@ -960,6 +962,7 @@ static inline void do_softlock(action_last_t *last, action_cur_t *cur)
                 splash(HZ/2, ID2P(LANG_KEYLOCK_OFF));
             }
         }
+#endif
 
         action       = ACTION_REDRAW;
         last->button = BUTTON_NONE;

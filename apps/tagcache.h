@@ -42,7 +42,21 @@ enum tag_type { tag_artist = 0, tag_album, tag_genre, tag_title,
     tag_virt_length_min, tag_virt_length_sec,
     tag_virt_playtime_min, tag_virt_playtime_sec,
     tag_virt_entryage, tag_virt_autoscore,
+    tag_virt_mediatype, /* enum tagcache_media of the file */
     TAG_COUNT_ALL};
+
+/* Media types. Every entry has one (index entry flags, set when the file is
+ * added) and every search returns one type only, music unless
+ * tagcache_search_set_media() or a clause "mediatype == n" asks for
+ * another. Podcasts and audiobooks so appear in their own database views
+ * and nowhere else (docs/ipod6g-database-media-types.md). */
+enum tagcache_media {
+    TAGCACHE_MEDIA_MUSIC = 0,
+    TAGCACHE_MEDIA_PODCAST,
+    TAGCACHE_MEDIA_AUDIOBOOK,
+    TAGCACHE_MEDIA_COUNT,
+    TAGCACHE_MEDIA_ALL = 0xff,  /* searches only: every type */
+};
 
 /* How many entries to fetch to the seek table at once while searching. */
 #define SEEK_LIST_SIZE 32
@@ -65,7 +79,8 @@ enum tag_type { tag_artist = 0, tag_album, tag_genre, tag_title,
     (1LU << tag_lastelapsed) | (1LU << tag_lastoffset) | \
     (1LU << tag_virt_length_min) | (1LU << tag_virt_length_sec) | \
     (1LU << tag_virt_playtime_min) | (1LU << tag_virt_playtime_sec) | \
-    (1LU << tag_virt_entryage) | (1LU << tag_virt_autoscore))
+    (1LU << tag_virt_entryage) | (1LU << tag_virt_autoscore) | \
+    (1LU << tag_virt_mediatype))
 
 #define TAGCACHE_IS_NUMERIC(tag) (BIT_N(tag) & TAGCACHE_NUMERIC_TAGS)
 
@@ -125,7 +140,10 @@ struct tagcache_seeklist_entry {
 
 struct tagcache_search {
     /* For internal use only. */
-    int fd, masterfd;
+    int media;           /* media type of the results and state of its media
+                            map (tagcache.c); took the place of an unused
+                            field, so the struct keeps its size for plugins */
+    int masterfd;
     int idxfd[TAG_COUNT];
     struct tagcache_seeklist_entry seeklist[SEEK_LIST_SIZE];
     int seek_list_count;
@@ -171,6 +189,10 @@ bool tagcache_check_clauses(struct tagcache_search *tcs,
 bool tagcache_search(struct tagcache_search *tcs, int tag);
 void tagcache_search_set_uniqbuf(struct tagcache_search *tcs,
                                  void *buffer, long length);
+void tagcache_search_track_index(struct tagcache_search *tcs);
+/* enum tagcache_media of the results; before the first tagcache_get_next() */
+void tagcache_search_set_media(struct tagcache_search *tcs, int media);
+int tagcache_search_get_media(const struct tagcache_search *tcs);
 bool tagcache_search_add_filter(struct tagcache_search *tcs,
                                 int tag, int seek);
 bool tagcache_search_add_clause(struct tagcache_search *tcs,
@@ -189,6 +211,36 @@ bool tagcache_modify_numeric_entry(struct tagcache_search *tcs,
 
 struct tagcache_stat* tagcache_get_stat(void);
 int tagcache_get_commit_step(void);
+#ifdef IPOD_6G
+/* Identifies the committed database: a commit moves the tag seeks that the
+ * album list artwork (albumart_list.c) uses as keys. */
+void tagcache_get_db_id(int32_t *commitid, int32_t *entries,
+                        int32_t *datasize);
+/* Calls fn for every live entry, in master index order, with its seeks into
+ * the files of tag_a and tag_b (0 for tag_b < 0): one pass over the index
+ * instead of one search per album. Stops when fn returns false; returns
+ * false then or if the index cannot be read. */
+/* Albums of one media type (enum tagcache_media) in the database (main
+ * menu sidebar), without "<Untagged>"; counted once per database state, -1
+ * while the database is not ready */
+int tagcache_count_albums(int media);
+/* Heard podcasts and audiobooks (docs/ipod6g-database-media-types.md):
+ * played for 15 s or to their end, i.e. play count above 0 */
+int tagcache_entry_media(int idx_id);
+int tagcache_entry_heard(int idx_id);
+int tagcache_count_unheard(int media, int tag, int32_t seek, int skip_idx);
+int tagcache_mark_unheard(int media, int tag, int32_t seek, int idx_id);
+unsigned tagcache_numeric_generation(void);
+/* Writes queued numeric updates (play counts) soon, not when the storage
+ * idles: lists show a podcast heard right after it stopped */
+void tagcache_flush_numeric(void);
+/* The media type of a file by its folder, -1 outside the media folders */
+int tagcache_path_media(const char *path);
+bool tagcache_for_each_entry(int tag_a, int tag_b,
+                             bool (*fn)(int idx_id, int32_t seek_a,
+                                        int32_t seek_b, void *data),
+                             void *data);
+#endif
 bool tagcache_prepare_shutdown(void);
 void tagcache_shutdown(void);
 void tagcache_remove_statefile(void);

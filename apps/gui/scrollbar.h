@@ -61,4 +61,24 @@ extern void gui_bitmap_scrollbar_draw(struct screen * screen, struct bitmap *bm,
                             unsigned flags);
 extern void show_busy_slider(struct screen *s, int x, int y,
                             int width, int height);
+#if defined(IPOD_6G) && defined(HAVE_LCD_COLOR) && !defined(DISABLE_ALPHA_BITMAP)
+/* Gap between the knob of gui_scrollbar_draw_overlay() and the list edge.
+ * Lists keep their text out of a strip as wide as knob and gap. */
+#define GUI_SCROLLBAR_OVERLAY_GAP 2
+/* Steps from the fully shown knob (0) to the hidden one */
+#define GUI_SCROLLBAR_FADE_STEPS 7
+/*
+ * Draws a vertical scrollbar like that of the original iPod firmware on the
+ * main screen: only a semi-transparent dark knob over what is already drawn
+ * in the given area, at_right_edge says on which side of the area it sits.
+ * The knob fills the width of the area less GUI_SCROLLBAR_OVERLAY_GAP.
+ * fade makes the knob more transparent, from 0 (normal) to
+ * GUI_SCROLLBAR_FADE_STEPS (not drawn). The other arguments are those of
+ * gui_scrollbar_draw().
+ */
+extern void gui_scrollbar_draw_overlay(struct screen *screen, int x, int y,
+                                       int width, int height, int items,
+                                       int min_shown, int max_shown,
+                                       bool at_right_edge, int fade);
+#endif
 #endif /* _GUI_SCROLLBAR_H_ */

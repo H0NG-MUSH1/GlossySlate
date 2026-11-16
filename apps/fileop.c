@@ -39,6 +39,9 @@
 #include "yesno.h"
 #include "splash.h"
 #include "keyboard.h"
+#ifdef IPOD_6G
+#include "root_menu.h"
+#endif
 
 /* Used for directory move, copy and delete */
 struct file_op_params
@@ -489,7 +492,7 @@ static int copy_move_directory(struct file_op_params *src,
 /************************************************************************************/
 
 /* Copy or move a file or directory see: file_op_flags */
-int copy_move_fileobject(const char *src_path, const char *dst_path, unsigned int flags)
+static int copy_move_fileobject_do(const char *src_path, const char *dst_path, unsigned int flags)
 {
     if (!src_path[0])
         return FORC_NOOP;
@@ -557,7 +560,7 @@ int copy_move_fileobject(const char *src_path, const char *dst_path, unsigned in
     return FORC_UNKNOWN_FAILURE;
 }
 
-int create_dir(void)
+static int create_dir_do(void)
 {
     int rc;
     char dirname[MAX_PATH];
@@ -575,7 +578,7 @@ int create_dir(void)
 }
 
 /* share code for file and directory deletion, saves space */
-int delete_fileobject(const char *selected_file)
+static int delete_fileobject_do(const char *selected_file)
 {
     int rc;
     struct file_op_params param;
@@ -611,7 +614,7 @@ int delete_fileobject(const char *selected_file)
     return rc;
 }
 
-int rename_file(const char *selected_file)
+static int rename_file_do(const char *selected_file)
 {
     int rc;
     char newname[MAX_PATH];
@@ -655,4 +658,35 @@ int rename_file(const char *selected_file)
 
     /* Else Some other relation / failure */
     return FORC_UNKNOWN_FAILURE;
+}
+
+/* The public operations. After each one the main menu sidebar counts its
+ * playlists and recordings anew (IPOD_6G): a file operation may have
+ * created, deleted, renamed or moved one of them. */
+static int files_changed(int rc)
+{
+#ifdef IPOD_6G
+    root_menu_media_count_changed(-1);
+#endif
+    return rc;
+}
+
+int copy_move_fileobject(const char *src_path, const char *dst_path, unsigned int flags)
+{
+    return files_changed(copy_move_fileobject_do(src_path, dst_path, flags));
+}
+
+int create_dir(void)
+{
+    return files_changed(create_dir_do());
+}
+
+int delete_fileobject(const char *selected_file)
+{
+    return files_changed(delete_fileobject_do(selected_file));
+}
+
+int rename_file(const char *selected_file)
+{
+    return files_changed(rename_file_do(selected_file));
 }

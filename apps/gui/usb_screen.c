@@ -52,6 +52,12 @@
 #include "ata_mmc.h"
 #endif
 
+#if defined(IPOD_6G) && defined(HAVE_USBSTACK) && defined(USB_ENABLE_STORAGE) \
+    && !defined(SIMULATOR)
+/* second USB screen once the host has ejected the drive (theme: %cs = 22) */
+#define USB_EJECT_SCREEN
+#endif
+
 struct usb_screen_vps_t
 {
     struct viewport parent;
@@ -81,6 +87,9 @@ static void handle_usb_events(struct viewport *title)
     int next_update = 0;
 #endif /* STORAGE_MMC */
     int button;
+#ifdef USB_EJECT_SCREEN
+    bool eject_shown = false;
+#endif
 
     /* Don't return until we get SYS_USB_DISCONNECTED */
     while(1)
@@ -107,6 +116,18 @@ static void handle_usb_events(struct viewport *title)
         if (button == SYS_CHARGER_DISCONNECTED)
             reset_runtime();
 
+#ifdef USB_EJECT_SCREEN
+        /* The host ejected the drive: swap the activity in place (same stack
+         * depth), the status bar skin then shows the second USB screen.
+         * gui_usb_screen_run() pops it as before when the cable is pulled. */
+        if (!eject_shown && usb_storage_all_ejected())
+        {
+            eject_shown = true;
+            pop_current_activity_without_refresh();
+            push_current_activity(ACTIVITY_USBEJECTED);
+        }
+#endif
+
 /* USB-MMC bridge can report activity */
 #if (CONFIG_STORAGE & STORAGE_MMC) && !defined(SIMULATOR)
         if(TIME_AFTER(current_tick,next_update))
@@ -119,6 +140,33 @@ static void handle_usb_events(struct viewport *title)
 #endif /* STORAGE_MMC */
     }
 }
+
+#ifdef USB_EJECT_SCREEN
+/* During USB the font files are closed (font_disable_all()), text comes
+ * from the glyph caches only. The second USB screen is drawn later than the
+ * first: load the common characters into the cache of every loaded font
+ * now, so its text has no gaps. */
+static void usb_screen_cache_glyphs(void)
+{
+    static const unsigned char chars[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        "\xc3\x84\xc3\x96\xc3\x9c\xc3\xa4\xc3\xb6\xc3\xbc\xc3\x9f" /* ÄÖÜäöüß */
+        "0123456789.,:-%()";
+    struct font *done[MAXFONTS];
+    int n = 0;
+    for (int id = FONT_FIRSTUSERFONT; id < MAXFONTS; id++)
+    {
+        struct font *pf = font_get(id);   /* unused ids fall back: skip */
+        bool seen = false;
+        for (int i = 0; i < n && !seen; i++)
+            seen = done[i] == pf;
+        if (seen)
+            continue;
+        done[n++] = pf;
+        font_getstringsize(chars, NULL, NULL, id);
+    }
+}
+#endif
 
 static void usb_screen_fix_viewports(struct screen *screen,
         struct usb_screen_vps_t *usb_screen_vps)
@@ -272,6 +320,9 @@ void gui_usb_screen_run(bool early_usb, intptr_t seqnum)
 
     if(!early_usb)
     {
+#ifdef USB_EJECT_SCREEN
+        usb_screen_cache_glyphs();
+#endif
         /* The font system leaves the .fnt fd's open, so we need for force close them all */
         font_disable_all();
     }

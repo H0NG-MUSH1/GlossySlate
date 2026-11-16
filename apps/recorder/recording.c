@@ -766,6 +766,35 @@ enum rec_list_items_stereo {
 static int listid_to_enum[ITEM_COUNT];
 
 static const char* reclist_get_name(int selected_item, void * data,
+                                    char * buffer, size_t buffer_len);
+#ifdef IPOD_6G
+/* The rows show "Name: value" as name and value apart, the value at the
+ * right end like the settings in menus */
+static const char* reclist_get_label(int selected_item, void * data,
+                                     char * buffer, size_t buffer_len)
+{
+    const char *s = reclist_get_name(selected_item, data, buffer, buffer_len);
+    char *colon = (s == buffer) ? strchr(buffer, ':') : NULL;
+    if (colon)
+        *colon = '\0';
+    return s;
+}
+
+static const char* reclist_get_value(int selected_item, void * data,
+                                     char * buffer, size_t buffer_len)
+{
+    const char *s = reclist_get_name(selected_item, data, buffer, buffer_len);
+    const char *colon = (s == buffer) ? strchr(buffer, ':') : NULL;
+    if (!colon)
+        return NULL;
+    colon++;
+    while (*colon == ' ')
+        colon++;
+    return *colon ? colon : NULL;
+}
+#endif
+
+static const char* reclist_get_name(int selected_item, void * data,
                                     char * buffer, size_t buffer_len)
 {
     char buf2[32];
@@ -1209,7 +1238,12 @@ bool recording_screen(bool no_source)
             }
 
             /* init the bottom list */
+#ifdef IPOD_6G
+            gui_synclist_init(&lists, reclist_get_label, NULL, false, 1, vp_list);
+            lists.callback_get_item_value = reclist_get_value;
+#else
             gui_synclist_init(&lists, reclist_get_name, NULL, false, 1, vp_list);
+#endif
             gui_synclist_set_title(&lists, NULL, Icon_NOICON);
 
             send_event(GUI_EVENT_ACTIONUPDATE, (void*)1); /* force a redraw */

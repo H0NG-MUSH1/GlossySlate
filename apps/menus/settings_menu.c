@@ -174,7 +174,8 @@ MAKE_MENU(tagcache_menu, ID2P(LANG_TAGCACHE), 0, Icon_NOICON,
 #ifdef HAVE_TC_RAMCACHE
                 &tagcache_ram,
 #endif
-                &tagcache_autoupdate, &tc_init, &tc_update, &runtimedb,
+                &tagcache_autoupdate, &tc_init, &tc_update,
+                &runtimedb,
                 &tc_export, &tc_import, &tc_paths
                 );
 #endif /* HAVE_TAGCACHE */

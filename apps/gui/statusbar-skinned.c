@@ -24,6 +24,9 @@
 #include "system.h"
 #include "settings.h"
 #include "appevents.h"
+#ifdef IPOD_6G
+#include "popup.h"
+#endif
 #include "screens.h"
 #include "screen_access.h"
 #include "skin_parser.h"
@@ -168,6 +171,26 @@ struct viewport *sb_skin_get_info_vp(enum screen_type screen)
     return &vp->vp;
 }
 
+#ifdef IPOD_6G
+/* The UI viewport of the sbs's last update (%VI), without the redraw that
+ * sb_skin_get_info_vp() starts when it changed; for skin_render() */
+struct viewport *sb_skin_peek_info_vp(enum screen_type screen)
+{
+    if (sbs_loaded[screen] == false)
+        return NULL;
+    struct wps_data *data = skin_get_gwps(CUSTOM_STATUSBAR, screen)->data;
+    char *label;
+    if (infovp_label[screen] == VP_DEFAULT_LABEL)
+        label = VP_DEFAULT_LABEL_STRING;
+    else
+        label = SKINOFFSETTOPTR(get_skin_buffer(data), infovp_label[screen]);
+    if (!label)
+        return NULL;
+    struct skin_viewport *vp = skin_find_item(label, SKIN_FIND_UIVP, data);
+    return vp ? &vp->vp : NULL;
+}
+#endif
+
 #if (LCD_DEPTH > 1) || (defined(HAVE_REMOTE_LCD) && LCD_REMOTE_DEPTH > 1)
 int sb_get_backdrop(enum screen_type screen)
 {
@@ -185,6 +208,18 @@ int sb_get_backdrop(enum screen_type screen)
 }
 #endif
 static bool force_waiting[NB_SCREENS];
+#ifdef IPOD_6G
+static unsigned update_us_last, update_us_max;
+
+void sb_skin_update_times(unsigned *last_us, unsigned *max_us, bool reset)
+{
+    *last_us = update_us_last;
+    *max_us = update_us_max;
+    if (reset)
+        update_us_max = 0;
+}
+#endif
+
 void sb_skin_update(enum screen_type screen, bool force)
 {
     struct wps_data *data = skin_get_gwps(CUSTOM_STATUSBAR, screen)->data;
@@ -192,6 +227,18 @@ void sb_skin_update(enum screen_type screen, bool force)
     int i = screen;
     if (!data->wps_loaded)
         return;
+#if defined(IPOD_6G) && GS_POPUPS
+    /* never over a popup (gui/popup.c); once something else has drawn over
+     * one, everything again, the rest of it may lie on the sidebar */
+    if (screen == SCREEN_MAIN)
+    {
+        enum popup_state ps = popup_screen_state();
+        if (ps == POPUP_SHOWN)
+            return;
+        if (ps == POPUP_DISTURBED)
+            force = true;
+    }
+#endif
     if (TIME_AFTER(current_tick, next_update[i]) || force ||
         force_waiting[i])
     {
@@ -204,10 +251,38 @@ void sb_skin_update(enum screen_type screen, bool force)
         {
             if (force)
                 skin_request_full_update(CUSTOM_STATUSBAR);
+#if defined(IPOD_6G) && defined(USEC_TIMER)
+            unsigned long t0 = USEC_TIMER;
+#endif
             skin_update(CUSTOM_STATUSBAR, screen, SKIN_REFRESH_NON_STATIC);
+#if defined(IPOD_6G) && defined(USEC_TIMER)
+            if (screen == SCREEN_MAIN)
+            {
+                update_us_last = (unsigned)(USEC_TIMER - t0);
+                if (update_us_last > update_us_max)
+                    update_us_max = update_us_last;
+            }
+#endif
         }
         next_update[i] = current_tick + update_delay; /* don't update too often */
     }
+#ifdef IPOD_6G
+    /* This update chose another UI viewport (%VI) than the one the lists
+     * were laid out with. Lists ask only when they are set up again, so
+     * tell them now: sb_skin_get_info_vp() takes the new viewport over and
+     * marks the lists for a new layout, the redraw lays the list on the
+     * screen out again. Without this a list could keep a wrong viewport:
+     * after the skins are reloaded (new language) the UI viewport is the
+     * default one (full screen) until the first update, and that update may
+     * come only after the list was laid out (the popup "Language loaded"
+     * holds updates back). */
+    if (oldinfovp_label[screen] &&
+        oldinfovp_label[screen] != infovp_label[screen])
+    {
+        sb_skin_get_info_vp(screen);
+        button_queue_post(BUTTON_REDRAW, 0);
+    }
+#endif
 }
 
 void do_sbs_update_callback(unsigned short id, void *param)

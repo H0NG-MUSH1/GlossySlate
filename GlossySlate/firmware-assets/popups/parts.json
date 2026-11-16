@@ -1,0 +1,385 @@
+{
+ "shadow_margin": {
+  "left": 12,
+  "top": 9,
+  "right": 12,
+  "bottom": 16
+ },
+ "parts": [
+  {
+   "file": "panel_h40_left",
+   "width": 26,
+   "height": 65,
+   "note": "Panel 40 high: left end with shadow",
+   "panel_height": 40
+  },
+  {
+   "file": "panel_h40_middle",
+   "width": 1,
+   "height": 65,
+   "note": "Panel 40 high: middle, 1 px, repeat",
+   "panel_height": 40
+  },
+  {
+   "file": "panel_h40_right",
+   "width": 26,
+   "height": 65,
+   "note": "Panel 40 high: right end with shadow",
+   "panel_height": 40
+  },
+  {
+   "file": "panel_h56_left",
+   "width": 26,
+   "height": 81,
+   "note": "Panel 56 high: left end with shadow",
+   "panel_height": 56
+  },
+  {
+   "file": "panel_h56_middle",
+   "width": 1,
+   "height": 81,
+   "note": "Panel 56 high: middle, 1 px, repeat",
+   "panel_height": 56
+  },
+  {
+   "file": "panel_h56_right",
+   "width": 26,
+   "height": 81,
+   "note": "Panel 56 high: right end with shadow",
+   "panel_height": 56
+  },
+  {
+   "file": "panel_h72_left",
+   "width": 26,
+   "height": 97,
+   "note": "Panel 72 high: left end with shadow",
+   "panel_height": 72
+  },
+  {
+   "file": "panel_h72_middle",
+   "width": 1,
+   "height": 97,
+   "note": "Panel 72 high: middle, 1 px, repeat",
+   "panel_height": 72
+  },
+  {
+   "file": "panel_h72_right",
+   "width": 26,
+   "height": 97,
+   "note": "Panel 72 high: right end with shadow",
+   "panel_height": 72
+  },
+  {
+   "file": "panel_h88_left",
+   "width": 26,
+   "height": 113,
+   "note": "Panel 88 high: left end with shadow",
+   "panel_height": 88
+  },
+  {
+   "file": "panel_h88_middle",
+   "width": 1,
+   "height": 113,
+   "note": "Panel 88 high: middle, 1 px, repeat",
+   "panel_height": 88
+  },
+  {
+   "file": "panel_h88_right",
+   "width": 26,
+   "height": 113,
+   "note": "Panel 88 high: right end with shadow",
+   "panel_height": 88
+  },
+  {
+   "file": "panel_h96_left",
+   "width": 26,
+   "height": 121,
+   "note": "Panel 96 high: left end with shadow",
+   "panel_height": 96
+  },
+  {
+   "file": "panel_h96_middle",
+   "width": 1,
+   "height": 121,
+   "note": "Panel 96 high: middle, 1 px, repeat",
+   "panel_height": 96
+  },
+  {
+   "file": "panel_h96_right",
+   "width": 26,
+   "height": 121,
+   "note": "Panel 96 high: right end with shadow",
+   "panel_height": 96
+  },
+  {
+   "file": "panel_h104_left",
+   "width": 26,
+   "height": 129,
+   "note": "Panel 104 high: left end with shadow",
+   "panel_height": 104
+  },
+  {
+   "file": "panel_h104_middle",
+   "width": 1,
+   "height": 129,
+   "note": "Panel 104 high: middle, 1 px, repeat",
+   "panel_height": 104
+  },
+  {
+   "file": "panel_h104_right",
+   "width": 26,
+   "height": 129,
+   "note": "Panel 104 high: right end with shadow",
+   "panel_height": 104
+  },
+  {
+   "file": "panel_h112_left",
+   "width": 26,
+   "height": 137,
+   "note": "Panel 112 high: left end with shadow",
+   "panel_height": 112
+  },
+  {
+   "file": "panel_h112_middle",
+   "width": 1,
+   "height": 137,
+   "note": "Panel 112 high: middle, 1 px, repeat",
+   "panel_height": 112
+  },
+  {
+   "file": "panel_h112_right",
+   "width": 26,
+   "height": 137,
+   "note": "Panel 112 high: right end with shadow",
+   "panel_height": 112
+  },
+  {
+   "file": "panel_h120_left",
+   "width": 26,
+   "height": 145,
+   "note": "Panel 120 high: left end with shadow",
+   "panel_height": 120
+  },
+  {
+   "file": "panel_h120_middle",
+   "width": 1,
+   "height": 145,
+   "note": "Panel 120 high: middle, 1 px, repeat",
+   "panel_height": 120
+  },
+  {
+   "file": "panel_h120_right",
+   "width": 26,
+   "height": 145,
+   "note": "Panel 120 high: right end with shadow",
+   "panel_height": 120
+  },
+  {
+   "file": "panel_h128_left",
+   "width": 26,
+   "height": 153,
+   "note": "Panel 128 high: left end with shadow",
+   "panel_height": 128
+  },
+  {
+   "file": "panel_h128_middle",
+   "width": 1,
+   "height": 153,
+   "note": "Panel 128 high: middle, 1 px, repeat",
+   "panel_height": 128
+  },
+  {
+   "file": "panel_h128_right",
+   "width": 26,
+   "height": 153,
+   "note": "Panel 128 high: right end with shadow",
+   "panel_height": 128
+  },
+  {
+   "file": "symbol_done",
+   "width": 48,
+   "height": 48,
+   "note": "Symbol done, #DFE6F3"
+  },
+  {
+   "file": "symbol_info",
+   "width": 48,
+   "height": 48,
+   "note": "Symbol info, #DFE6F3"
+  },
+  {
+   "file": "symbol_warning",
+   "width": 48,
+   "height": 48,
+   "note": "Symbol warning, #DFE6F3"
+  },
+  {
+   "file": "symbol_locked",
+   "width": 48,
+   "height": 48,
+   "note": "Symbol locked, #DFE6F3"
+  },
+  {
+   "file": "symbol_unlocked",
+   "width": 48,
+   "height": 48,
+   "note": "Symbol unlocked, #DFE6F3"
+  },
+  {
+   "file": "symbol_loading",
+   "width": 48,
+   "height": 576,
+   "note": "Loading circle, 12 frames of 48 × 48 each, next every 0.1 s",
+   "frames": 12
+  },
+  {
+   "file": "bar_track_left",
+   "width": 4,
+   "height": 9,
+   "note": "bar track: left end"
+  },
+  {
+   "file": "bar_track_middle",
+   "width": 1,
+   "height": 9,
+   "note": "bar track: middle, 1 px, repeat"
+  },
+  {
+   "file": "bar_track_right",
+   "width": 4,
+   "height": 9,
+   "note": "bar track: right end"
+  },
+  {
+   "file": "bar_fill_left",
+   "width": 4,
+   "height": 8,
+   "note": "bar fill: left end"
+  },
+  {
+   "file": "bar_fill_middle",
+   "width": 1,
+   "height": 8,
+   "note": "bar fill: middle, 1 px, repeat"
+  },
+  {
+   "file": "bar_fill_right",
+   "width": 4,
+   "height": 8,
+   "note": "bar fill: right end"
+  },
+  {
+   "file": "button_yes",
+   "width": 102,
+   "height": 26,
+   "note": "Button without text, 102 × 26"
+  },
+  {
+   "file": "button_yes_left",
+   "width": 14,
+   "height": 26,
+   "note": "Button: left end"
+  },
+  {
+   "file": "button_yes_middle",
+   "width": 1,
+   "height": 26,
+   "note": "Button: middle, 1 px"
+  },
+  {
+   "file": "button_yes_right",
+   "width": 14,
+   "height": 26,
+   "note": "Button: right end"
+  },
+  {
+   "file": "button_no",
+   "width": 102,
+   "height": 26,
+   "note": "Button without text, 102 × 26"
+  },
+  {
+   "file": "button_no_left",
+   "width": 14,
+   "height": 26,
+   "note": "Button: left end"
+  },
+  {
+   "file": "button_no_middle",
+   "width": 1,
+   "height": 26,
+   "note": "Button: middle, 1 px"
+  },
+  {
+   "file": "button_no_right",
+   "width": 14,
+   "height": 26,
+   "note": "Button: right end"
+  }
+ ],
+ "examples": [
+  {
+   "file": "message_1line",
+   "panel": [
+    190,
+    40
+   ]
+  },
+  {
+   "file": "message_2lines",
+   "panel": [
+    120,
+    56
+   ]
+  },
+  {
+   "file": "symbol_done",
+   "panel": [
+    132,
+    104
+   ]
+  },
+  {
+   "file": "symbol_locked",
+   "panel": [
+    132,
+    104
+   ]
+  },
+  {
+   "file": "symbol_unlocked",
+   "panel": [
+    132,
+    104
+   ]
+  },
+  {
+   "file": "symbol_warning",
+   "panel": [
+    132,
+    120
+   ]
+  },
+  {
+   "file": "symbol_loading",
+   "panel": [
+    132,
+    104
+   ]
+  },
+  {
+   "file": "progress_45",
+   "panel": [
+    208,
+    72
+   ]
+  },
+  {
+   "file": "yesno",
+   "panel": [
+    240,
+    112
+   ]
+  }
+ ]
+}

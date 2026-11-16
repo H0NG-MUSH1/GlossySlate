@@ -43,6 +43,12 @@ int  bookmark_autoload(const char* file);
 bool bookmark_load(const char* file, bool autoload);
 bool bookmark_exists(void);
 bool bookmark_is_bookmarkable_state(void);
+#ifdef IPOD_6G
+/* plays folder dir from file, at its bookmark if that is in this file */
+bool bookmark_play_media_folder(char *dir, char *file);
+/* removes bookmarks in the track at path ("Mark as unheard") */
+void bookmark_forget_track(const char *path);
+#endif
 
 #endif /* __BOOKMARK_H__ */
 

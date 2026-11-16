@@ -35,6 +35,9 @@
 #include "crc32.h"
 #include "sound.h"
 #include "settings.h"
+#if defined(HAVE_MIKEY_REMOTE) && !defined(SIMULATOR) && !defined(__PCTOOL__)
+#include "mikey-target.h"
+#endif
 #ifdef HAVE_COMPOSITE_VIDEO_OUT
 #include "videoout.h"
 #endif
@@ -66,6 +69,9 @@
 #include "dircache.h"
 #include "splash.h"
 #include "list.h"
+#ifdef IPOD_6G
+#include "popup.h"
+#endif
 #include "settings_list.h"
 #include "filetypes.h"
 #include "option_select.h"
@@ -320,6 +326,14 @@ bool string_to_cfg(const char *name, char* value, bool *theme_changed)
 #ifdef HAVE_LCD_COLOR
         if (flags & F_RGB)
         {
+#ifdef IPOD_6G
+            /* "-": a list colour that follows the other theme colours,
+             * only for the colours that have it as default */
+            if (value[0] == '-' &&
+                setting->default_val.int_ == LIST_COLOR_FROM_THEME)
+                *(int*)setting->setting = LIST_COLOR_FROM_THEME;
+            else
+#endif
             hex_to_rgb(value, (int*)setting->setting);
             logf("Val: %s\r\n", value);
         }
@@ -526,6 +540,13 @@ void cfg_to_string(const struct settings_list *setting, char* buf, int buf_len)
             if (setting->flags & F_RGB)
             {
                 int colour = *(int*)setting->setting;
+#ifdef IPOD_6G
+                if (colour == LIST_COLOR_FROM_THEME)
+                {
+                    strmemccpy(buf, "-", buf_len);
+                    break;
+                }
+#endif
                 snprintf(buf,buf_len,"%02x%02x%02x",
                             (int)RGB_UNPACK_RED(colour),
                             (int)RGB_UNPACK_GREEN(colour),
@@ -928,6 +949,9 @@ void settings_apply(bool read_disk)
     CHART("<set_codepage");
 
     sound_settings_apply();
+#if defined(HAVE_MIKEY_REMOTE) && !defined(SIMULATOR) && !defined(__PCTOOL__)
+    mikey_set_remote_enabled(global_settings.headset_remote_control);
+#endif
 
 #ifdef HAVE_DISK_STORAGE
     audio_set_buffer_margin(global_settings.buffer_margin);
@@ -1070,7 +1094,17 @@ void settings_apply(bool read_disk)
         talk_init(); /* use voice of same language */
         CHART("<talk_init");
 
+#ifdef IPOD_6G
+        list_secondary_font_apply();
+        popup_fonts_apply();
+#endif
         /* load the icon set */
+#ifdef IPOD_6G
+        /* no icons at the start of list rows: the menu has no "show icons"
+         * any more, whatever a .cfg says (plugins that need them for the
+         * selection state switch them on for themselves) */
+        global_settings.show_icons = false;
+#endif
         CHART(">icons_init");
         icons_init();
         CHART("<icons_init");

@@ -63,6 +63,7 @@
 
 #include "wps_internals.h"
 #include "skin_engine.h"
+#include "skin_albumart_fx.h"
 #include "settings.h"
 #include "settings_list.h"
 #include "rbpaths.h"
@@ -614,7 +615,11 @@ static int parse_viewporttextstyle(struct skin_element *element,
     unsigned colour;
 
     static const char * const vp_options[] = { "invert", "color", "colour",
-                                 "clear", "gradient", NULL};
+                                 "clear", "gradient",
+#ifdef IPOD_6G
+                                 "gloss", /* gradient with a gloss */
+#endif
+                                 NULL};
 
     int vp_op = string_option(mode, vp_options, false);
 
@@ -632,7 +637,11 @@ static int parse_viewporttextstyle(struct skin_element *element,
         line->text_color = colour;
     }
 #ifdef HAVE_LCD_COLOR
-    else if (vp_op == 4) /*gradient*/
+    else if (vp_op == 4
+#ifdef IPOD_6G
+             || vp_op == 5 /*gloss*/
+#endif
+            ) /*gradient*/
     {
         int num_lines;
         if (element->params_count < 2)
@@ -642,6 +651,10 @@ static int parse_viewporttextstyle(struct skin_element *element,
               * making the "colour" case (above) harder to parse */
             num_lines = atoi(get_param_text(element, 1));
         line->style = STYLE_GRADIENT;
+#ifdef IPOD_6G
+        if (vp_op == 5)
+            line->style |= STYLE_GLOSS;
+#endif
         line->nlines = num_lines;
     }
 #endif
@@ -655,6 +668,20 @@ static int parse_viewporttextstyle(struct skin_element *element,
     token->value.data = PTRTOSKINOFFSET(skin_buffer, line);
     return 0;
 }
+
+#ifdef IPOD_6G
+/* "rrggbb" (checked by parse_color() before) to 0xRRGGBB */
+static uint32_t rgb24_from_text(const char *text)
+{
+    uint32_t v = 0;
+    for (int i = 0; i < 6; i++)
+    {
+        char c = text[i];
+        v = (v << 4) | (c <= '9' ? c - '0' : (c | 0x20) - 'a' + 10);
+    }
+    return v;
+}
+#endif
 
 static int parse_drawrectangle( struct skin_element *element,
                                 struct wps_token *token,
@@ -684,6 +711,12 @@ static int parse_drawrectangle( struct skin_element *element,
 
     rect->start_colour = curr_vp->vp.fg_pattern;
     rect->end_colour = curr_vp->vp.fg_pattern;
+#ifdef IPOD_6G
+    rect->start_rgb = rect->end_rgb =
+        (RGB_UNPACK_RED(rect->start_colour) << 16) |
+        (RGB_UNPACK_GREEN(rect->start_colour) << 8) |
+        RGB_UNPACK_BLUE(rect->start_colour);
+#endif
 
     if (element->params_count > 4)
     {
@@ -691,12 +724,19 @@ static int parse_drawrectangle( struct skin_element *element,
                     &rect->start_colour))
             return -1;
         rect->end_colour = rect->start_colour;
+#ifdef IPOD_6G
+        rect->start_rgb = rect->end_rgb =
+            rgb24_from_text(get_param_text(element, 4));
+#endif
     }
     if (element->params_count > 5)
     {
         if (!parse_color(curr_screen, get_param_text(element, 5),
                     &rect->end_colour))
             return -1;
+#ifdef IPOD_6G
+        rect->end_rgb = rgb24_from_text(get_param_text(element, 5));
+#endif
     }
     token->value.data = PTRTOSKINOFFSET(skin_buffer, rect);
 
@@ -840,6 +880,52 @@ static int parse_setting_and_lang(struct skin_element *element,
         token->value.xdata = (void *)setting;
     }
     return 0;
+}
+
+/* %Mc(albums|podcasts|audiobooks): how many albums the database has and
+ * how many podcasts and audiobooks the main menu entries open (the order is
+ * enum media_count in root_menu.h) */
+static int parse_media_count(struct skin_element *element,
+                             struct wps_token *token,
+                             struct wps_data *wps_data)
+{
+    (void)wps_data;
+    /* in the order of enum media_count (root_menu.h) */
+    static const char * const names[] = { "albums", "podcasts", "audiobooks",
+                                          "playlists", "bookmarks",
+                                          "recordings", "shortcuts" };
+    const char *name = get_param_text(element, 0);
+
+    for (int i = 0; i < (int)ARRAYLEN(names); i++)
+    {
+        if (!strcmp(name, names[i]))
+        {
+            token->value.i = i;
+            return 0;
+        }
+    }
+    return WPS_ERROR_INVALID_PARAM;
+}
+
+static int parse_locale_date(struct skin_element *element,
+                             struct wps_token *token,
+                             struct wps_data *wps_data)
+{
+    (void)wps_data;
+    /* in the order of enum skin_locale_date (wps_internals.h) */
+    static const char * const names[] = { "long", "short", "weekday",
+                                          "month" };
+    const char *name = get_param_text(element, 0);
+
+    for (int i = 0; i < (int)ARRAYLEN(names); i++)
+    {
+        if (!strcmp(name, names[i]))
+        {
+            token->value.i = i;
+            return 0;
+        }
+    }
+    return WPS_ERROR_INVALID_PARAM;
 }
 
 static int parse_logical_andor(struct skin_element *element,
@@ -1460,6 +1546,58 @@ failure:
 
 #ifdef HAVE_ALBUMART
 
+#ifdef IPOD_6G
+/* %Cd([tilt],[perspective],[reflection height],[reflection opacity],
+ *     [corner radius]): the album art of %Cl with the effects of
+ * skin_albumart_fx.c. "-" takes the default: 0 degrees, 420 px, no
+ * reflection, 34 %, square corners. Needs %Cl before it. */
+static int parse_albumart_display(struct skin_element* element,
+                                  struct wps_token *token,
+                                  struct wps_data *wps_data)
+{
+    static const int16_t defaults[5] = { 0, 420, 0, 34, 0 };
+    struct skin_albumart *aa =
+        SKINOFFSETTOPTR(skin_buffer, wps_data->albumart);
+    int16_t v[5];
+
+    token->value.data = PTRTOSKINOFFSET(skin_buffer, NULL);
+    if (element->params_count == 0 || !aa || aa->width <= 0 ||
+        aa->height <= 0)
+        return 0;
+    for (int i = 0; i < 5; i++)
+    {
+        struct skin_tag_parameter *param =
+            i < element->params_count ? get_param(element, i) : NULL;
+        v[i] = (param && param->type == INTEGER) ?
+               param->data.number : defaults[i];
+    }
+    if (v[0] == 0 && v[2] <= 0 && v[4] <= 0)
+        return 0; /* no effect */
+
+    struct skin_aa_fx *fx = skin_buffer_alloc(sizeof(*fx));
+    if (!fx)
+        return -1;
+    fx->tilt = MIN(MAX(v[0], -60), 60);
+    fx->perspective = MAX(v[1], aa->width);
+    fx->refl_height = MIN(MAX(v[2], 0), LCD_HEIGHT);
+    fx->refl_opacity = MIN(MAX(v[3], 0), 100);
+    fx->radius = MIN(MAX(v[4], 0), MIN(aa->width, aa->height) / 2);
+    fx->cover_w = fx->cover_h = 0;
+    fx->handle = -1;
+    fx->size = 0;
+    fx->buffer = PTRTOSKINOFFSET(skin_buffer, NULL);
+#ifndef __PCTOOL__
+    fx->size = skin_aa_fx_size(fx, aa->width, aa->height);
+    unsigned char *buf = skin_buffer_alloc(fx->size);
+    if (!buf)
+        return -1;
+    fx->buffer = PTRTOSKINOFFSET(skin_buffer, buf);
+#endif
+    token->value.data = PTRTOSKINOFFSET(skin_buffer, fx);
+    return 0;
+}
+#endif
+
 static int parse_albumart_load(struct skin_element* element,
                                struct wps_token *token,
                                struct wps_data *wps_data)
@@ -1481,6 +1619,9 @@ static int parse_albumart_load(struct skin_element* element,
     aa->width =  percent_parse_param(get_param(element, 2), curr_vp->vp.width);
     aa->height =  percent_parse_param(get_param(element, 3), curr_vp->vp.height);
     aa->draw_handle = -1;
+#ifdef IPOD_6G
+    aa->draw_fx = PTRTOSKINOFFSET(skin_buffer, NULL);
+#endif
 
     /* if we got here, we parsed everything ok .. ! */
     if (aa->width < 0)
@@ -2482,6 +2623,7 @@ static int skin_element_callback(struct skin_element* element, void* data)
                     break;
                 case SKIN_TOKEN_LIST_ITEM_TEXT:
                 case SKIN_TOKEN_LIST_ITEM_ICON:
+                case SKIN_TOKEN_LIST_ITEM_VALUE:
                     function = parse_listitem;
                     break;
                 case SKIN_TOKEN_DISABLE_THEME:
@@ -2537,7 +2679,14 @@ static int skin_element_callback(struct skin_element* element, void* data)
 #endif
                 case SKIN_TOKEN_TRANSLATEDSTRING:
                 case SKIN_TOKEN_SETTING:
+                case SKIN_TOKEN_SETTING_VALUE:
                     function = parse_setting_and_lang;
+                    break;
+                case SKIN_TOKEN_MEDIA_COUNT:
+                    function = parse_media_count;
+                    break;
+                case SKIN_TOKEN_RTC_LOCALE_DATE:
+                    function = parse_locale_date;
                     break;
                 case SKIN_TOKEN_VIEWPORT_CUSTOMLIST:
                     function = parse_playlistview;
@@ -2572,6 +2721,11 @@ static int skin_element_callback(struct skin_element* element, void* data)
                 case SKIN_TOKEN_ALBUMART_LOAD:
                     function = parse_albumart_load;
                     break;
+#ifdef IPOD_6G
+                case SKIN_TOKEN_ALBUMART_DISPLAY:
+                    function = parse_albumart_display;
+                    break;
+#endif
 #endif
 #ifdef HAVE_SKIN_VARIABLES
                 case SKIN_TOKEN_VAR_SET:
@@ -2641,6 +2795,76 @@ static int skin_element_callback(struct skin_element* element, void* data)
 
 /* Set up skin data from a format buffer (isfile = false)
                        or from skin file (isfile = true) */
+#if defined(IPOD_6G) && !defined(__PCTOOL__)
+/* %Vd(label) finds its viewports by label at every update (skin_render.c).
+ * With strcmp() against every viewport that was 130 x 130 compares per
+ * status bar update with GlossySlate, about 10 ms at 54 MHz, once a second
+ * in the menus: scrolling text jerked. Here every label gets one string,
+ * that of the first viewport with it, and every %Vd that string: the
+ * renderer compares offsets. */
+static const char *vp_label(struct skin_viewport *svp)
+{
+    if (!svp || svp->label == VP_DEFAULT_LABEL)
+        return NULL;
+    return SKINOFFSETTOPTR(skin_buffer, svp->label);
+}
+
+static void intern_vd_labels(struct skin_element *e, struct skin_element *tree)
+{
+    for (; e; e = SKINOFFSETTOPTR(skin_buffer, e->next))
+    {
+        if (e->type == TAG)
+        {
+            struct wps_token *token = SKINOFFSETTOPTR(skin_buffer, e->data);
+            if (token && token->type == SKIN_TOKEN_VIEWPORT_ENABLE)
+            {
+                const char *label = SKINOFFSETTOPTR(skin_buffer, token->value.data);
+                for (struct skin_element *vp = tree; vp && label;
+                     vp = SKINOFFSETTOPTR(skin_buffer, vp->next))
+                {
+                    struct skin_viewport *svp = SKINOFFSETTOPTR(skin_buffer, vp->data);
+                    const char *l = vp_label(svp);
+                    if (l && !strcmp(l, label))
+                    {
+                        token->value.data = svp->label;
+                        break;
+                    }
+                }
+            }
+        }
+        OFFSETTYPE(struct skin_element*) *kids =
+            SKINOFFSETTOPTR(skin_buffer, e->children);
+        for (int i = 0; kids && i < e->children_count; i++)
+            intern_vd_labels(SKINOFFSETTOPTR(skin_buffer, kids[i]), tree);
+    }
+}
+
+static void intern_viewport_labels(struct wps_data *data)
+{
+    struct skin_element *tree = SKINOFFSETTOPTR(skin_buffer, data->tree);
+    for (struct skin_element *v1 = tree; v1;
+         v1 = SKINOFFSETTOPTR(skin_buffer, v1->next))
+    {
+        struct skin_viewport *s1 = SKINOFFSETTOPTR(skin_buffer, v1->data);
+        const char *l1 = vp_label(s1);
+        if (!l1)
+            continue;
+        for (struct skin_element *v0 = tree; v0 != v1;
+             v0 = SKINOFFSETTOPTR(skin_buffer, v0->next))
+        {
+            struct skin_viewport *s0 = SKINOFFSETTOPTR(skin_buffer, v0->data);
+            const char *l0 = vp_label(s0);
+            if (l0 && !strcmp(l0, l1))
+            {
+                s1->label = s0->label;
+                break;
+            }
+        }
+    }
+    intern_vd_labels(tree, tree);
+}
+#endif
+
 bool skin_data_load(enum skinnable_screens skin, enum screen_type screen,
                     struct wps_data *wps_data, const char *buf, bool isfile,
                     struct skin_stats *stats)
@@ -2728,6 +2952,9 @@ bool skin_data_load(enum skinnable_screens skin, enum screen_type screen,
         skin_data_reset(wps_data);
         return false;
     }
+#if defined(IPOD_6G) && !defined(__PCTOOL__)
+    intern_viewport_labels(wps_data);
+#endif
 
     char bmpdir[MAX_PATH];
     if (isfile)

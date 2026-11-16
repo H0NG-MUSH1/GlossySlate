@@ -67,6 +67,7 @@
 #include "wps.h"
 #include "wps_internals.h"
 #include "skin_engine.h"
+#include "skin_albumart_fx.h"
 #include "statusbar-skinned.h"
 #include "skin_display.h"
 
@@ -225,13 +226,27 @@ void draw_progressbar(struct gui_wps *gwps, struct skin_viewport* skin_viewport,
     {
         int minvol = sound_min(SOUND_VOLUME);
         int maxvol = sound_max(SOUND_VOLUME);
+        if (maxvol > global_settings.volume_limit)
+            maxvol = global_settings.volume_limit;
+
+        /* The volume limit is the reachable end of the bar. Keep a muted
+         * limit empty and avoid normalizing across a zero-width range. */
+        if (maxvol <= minvol)
+        {
+            length = 1;
+            end = 0;
+        }
+        else
+        {
 #if defined(HAVE_PERCEPTUAL_VOLUME) || defined(HAVE_TOUCHSCREEN)
-        length = 1000;
-        end = to_normalized_volume(global_status.volume, minvol, maxvol, length);
+            length = 1000;
+            end = to_normalized_volume(global_status.volume, minvol, maxvol,
+                                       length);
 #else
-        length = maxvol - minvol;
-        end = global_status.volume - minvol;
+            length = maxvol - minvol;
+            end = global_status.volume - minvol;
 #endif
+        }
     }
     else if (pb->type == SKIN_TOKEN_BATTERY_PERCENTBAR)
     {
@@ -484,12 +499,21 @@ void clear_image_pos(struct gui_wps *gwps, struct gui_img *img)
     gwps->display->set_drawmode(DRMODE_SOLID);
 }
 
+#ifdef IPOD_6G
+/* DRMODE_SOLID blends the transparent pixels of an image with the backdrop,
+ * or without one with the background colour; DRMODE_FG blends them with
+ * what is already drawn (wps_display_images_over()) */
+static int image_drawmode = DRMODE_SOLID;
+#else
+#define image_drawmode DRMODE_SOLID
+#endif
+
 void wps_draw_image(struct gui_wps *gwps, struct gui_img *img,
                     int subimage, struct viewport* vp)
 {
     struct screen *display = gwps->display;
     img->bm.data = core_get_data(img->buflib_handle);
-    display->set_drawmode(DRMODE_SOLID);
+    display->set_drawmode(image_drawmode);
 
     if (img->is_9_segment)
         display->nine_segment_bmp(&img->bm, 0, 0, vp->width, vp->height);
@@ -540,6 +564,29 @@ void wps_display_images(struct gui_wps *gwps, struct viewport* vp)
 
     display->set_drawmode(DRMODE_SOLID);
 }
+
+#ifdef IPOD_6G
+/* The images of a viewport of the backdrop layer (%VB): the layer has no
+ * backdrop of its own, so drawn the usual way the transparent pixels of an
+ * image took the background colour of the viewport (white boxes around
+ * symbols on the blue sidebar). Here they are blended with what the layer
+ * already holds. That is not repeatable: call it only after the viewport
+ * was cleared. */
+void wps_display_images_over(struct gui_wps *gwps, struct viewport* vp)
+{
+    int old = image_drawmode;
+    image_drawmode = DRMODE_FG;
+    wps_display_images(gwps, vp);
+    image_drawmode = old;
+}
+
+/* the same for the rows of a skinned list (%Lb): the images of a row go
+ * over its line, i.e. over the selection bar */
+void wps_images_over(bool over)
+{
+    image_drawmode = over ? DRMODE_FG : DRMODE_SOLID;
+}
+#endif
 
 /* Evaluate the conditional that is at *token_index and return whether a skip
    has ocurred. *token_index is updated with the new position.
@@ -801,6 +848,17 @@ void draw_album_art(struct gui_wps *gwps, int handle_id, bool clear)
         else if (aa->yalign & WPS_ALBUMART_ALIGN_CENTER)
             y += (aa->height - height) / 2;
     }
+
+#if defined(IPOD_6G) && !defined(__PCTOOL__)
+    /* turned, rounded or mirrored by the %Cd that drew it */
+    struct skin_aa_fx *fx =
+        SKINOFFSETTOPTR(get_skin_buffer(data), aa->draw_fx);
+    if (fx && skin_aa_fx_draw(gwps->display, fx,
+                              SKINOFFSETTOPTR(get_skin_buffer(data),
+                                              fx->buffer),
+                              bmp, handle_id, x, y, width, height, clear))
+        return;
+#endif
 
     if (!clear)
     {

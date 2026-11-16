@@ -73,14 +73,13 @@
  * reads at the 10ms button tick) still accepts the click. */
 #define MIKEY_CLICK_POLLS   2
 
-/* Center-button handling: click-only. reg4's rising edge is always
- * immediate, but after ~5s of button inactivity the chip's event engine
- * naps and reports the release (reg4 fall, reg6 events) ~1.8s late, so
- * the press duration is unreliable. Every press is therefore reported
- * as a fixed-length click at the rise; there is no hold/long-press. A
- * release must be seen for several consecutive polls before a new rise
- * counts, so bounce or an I2C NAK can't double-fire a click. */
-#define MIKEY_CENTER_PULSE_POLLS  3     /* reported click length, 60ms */
+/* Center-button press duration is unreliable after the event engine has
+ * been idle: reg4's release may arrive ~1.8s late. Count rising edges
+ * instead, then emit one fixed-length multimedia key after the gesture
+ * window. A release must be seen for several polls before another rise
+ * counts, so bounce or an I2C NAK cannot add a phantom click. */
+#define MIKEY_GESTURE_WINDOW_POLLS 18  /* 360ms at the 20ms poll interval */
+#define MIKEY_GESTURE_PULSE_POLLS  3   /* 60ms button pulse */
 #define MIKEY_CENTER_OFF_POLLS    3     /* release debounce, 60ms */
 
 unsigned char mikey_read(int address)
@@ -103,8 +102,10 @@ void mikey_reset(void)
     mikey_write(1, 0x80);
 }
 
-static int mikey_btn = BUTTON_NONE;
+static volatile int mikey_btn = BUTTON_NONE;
 static volatile bool mic_active = false;
+static volatile bool remote_enabled = true;
+static volatile unsigned int remote_generation;
 static bool mikey_detected = false;
 static long mikey_stack[DEFAULT_STACK_SIZE/2/sizeof(long)];
 
@@ -153,6 +154,16 @@ static void mikey_decode_vol(unsigned char evt, unsigned char dn,
  * reading as a stuck center button. */
 #define MIKEY_ARM_WINDOW_POLLS  10      /* 200ms after (re)arming */
 
+/* Plug-in failsafe for the center button, the counterpart of the window
+ * above: while the plug is pushed in and the detection engine arms, reg4
+ * can read pressed and released again. The "armed" guard alone only
+ * catches a reading that starts pressed; a released-pressed-released
+ * flicker counted as one click, sent play/pause, and with nothing playing
+ * Rockbox resumed the last playback right after the headphones were
+ * plugged in. So no center press counts this long after (re)arming, and
+ * one still held when the window closes has to be released first. */
+#define MIKEY_CENTER_ARM_POLLS  50      /* 1s after (re)arming */
+
 /* Per-poll decode state, kept apart from the thread's power/mode
  * bookkeeping so the register-to-button logic is a pure function of
  * (state, reg4, reg5). */
@@ -162,9 +173,13 @@ struct mikey_decode {
     int up_click, dn_click;
     int arm_window;      /* polls left of phantom-press suppression window */
     bool up_suppressed, dn_suppressed;
+    int center_window;   /* polls left in which no center press counts */
     bool center_down;    /* debounced "press already reported" */
     int center_off;      /* consecutive released polls */
-    int center_pulse;    /* click pulse countdown */
+    int gesture_count;   /* center presses in the current gesture */
+    int gesture_wait;    /* polls before the gesture is dispatched */
+    int gesture_button;  /* multimedia key currently being pulsed */
+    int gesture_pulse;   /* polls remaining in that pulse */
 };
 
 static void mikey_decode_reset(struct mikey_decode *d)
@@ -174,9 +189,13 @@ static void mikey_decode_reset(struct mikey_decode *d)
     d->up_click = d->dn_click = 0;
     d->arm_window = MIKEY_ARM_WINDOW_POLLS;
     d->up_suppressed = d->dn_suppressed = false;
+    d->center_window = MIKEY_CENTER_ARM_POLLS;
     d->center_down = false;
     d->center_off = MIKEY_CENTER_OFF_POLLS;
-    d->center_pulse = 0;
+    d->gesture_count = 0;
+    d->gesture_wait = 0;
+    d->gesture_button = BUTTON_NONE;
+    d->gesture_pulse = 0;
 }
 
 /* Apply the phantom-load failsafe to one volume button's edge bits:
@@ -218,16 +237,28 @@ static int mikey_decode_poll(struct mikey_decode *d,
                      &d->vol_dn, &d->dn_click);
 
     /* reg4 can read pressed while the mode settles; don't report the
-     * center button until it has been seen released once */
+     * center button until it has been seen released once, and not at all
+     * within the plug-in window (MIKEY_CENTER_ARM_POLLS) */
     bool raw = (btn & MIKEY_BTN_CENTER) != 0;
-    if (!raw)
+    if (d->center_window > 0)
+    {
+        d->center_window--;
+        d->armed = false;
+    }
+    else if (!raw)
         d->armed = true;
 
-    /* click-only: emit a fixed pulse at each debounced rise */
+    bool new_press = false;
+    /* Count each debounced rise; the release can be late after inactivity. */
     if (raw && d->armed)
     {
         if (!d->center_down && d->center_off >= MIKEY_CENTER_OFF_POLLS)
-            d->center_pulse = MIKEY_CENTER_PULSE_POLLS;
+        {
+            if (d->gesture_count < 3)
+                d->gesture_count++;
+            d->gesture_wait = MIKEY_GESTURE_WINDOW_POLLS;
+            new_press = true;
+        }
         d->center_down = true;
         d->center_off = 0;
     }
@@ -239,19 +270,35 @@ static int mikey_decode_poll(struct mikey_decode *d,
             d->center_down = false;
     }
 
-    bool center = false;
-    if (d->center_pulse > 0)
+    if (!new_press && d->gesture_wait > 0 && --d->gesture_wait == 0)
     {
-        center = true;
-        d->center_pulse--;
+        switch (d->gesture_count)
+        {
+            case 1: d->gesture_button = BUTTON_MULTIMEDIA_PLAYPAUSE; break;
+            case 2: d->gesture_button = BUTTON_MULTIMEDIA_NEXT; break;
+            case 3: d->gesture_button = BUTTON_MULTIMEDIA_PREV; break;
+        }
+        d->gesture_pulse = MIKEY_GESTURE_PULSE_POLLS;
+        d->gesture_count = 0;
     }
 
-    /* All buttons report as multimedia keys: handled globally by
-     * default_event_handler on every screen, so volume and play/pause
-     * work in menus, WPS and plugins alike, matching the OF. */
-    return (center    ? BUTTON_MULTIMEDIA_PLAYPAUSE   : 0)
-         | (d->vol_up ? BUTTON_MULTIMEDIA_VOLUME_UP   : 0)
-         | (d->vol_dn ? BUTTON_MULTIMEDIA_VOLUME_DOWN : 0);
+    int gesture = BUTTON_NONE;
+    if (d->gesture_pulse > 0)
+    {
+        gesture = d->gesture_button;
+        if (--d->gesture_pulse == 0)
+            d->gesture_button = BUTTON_NONE;
+    }
+
+    /* Multimedia keys are distinct codes, not a mask of simultaneous keys.
+     * Give a completed center gesture priority over a held volume button. */
+    if (gesture != BUTTON_NONE)
+        return gesture;
+    if (d->vol_up)
+        return BUTTON_MULTIMEDIA_VOLUME_UP;
+    if (d->vol_dn)
+        return BUTTON_MULTIMEDIA_VOLUME_DOWN;
+    return BUTTON_NONE;
 }
 
 /* The chip only ACKs the bus while something occupies the jack, so
@@ -265,13 +312,25 @@ static void mikey_thread(void)
 {
     bool powered = false;
     int naks = 0;
+    unsigned int seen_generation = remote_generation;
     struct mikey_decode decode;
 
     mikey_decode_reset(&decode);
 
     while (1)
     {
-        if (!headphones_inserted() || mic_active)
+        if (seen_generation != remote_generation)
+        {
+            seen_generation = remote_generation;
+            if (powered && !mic_active)
+                mikey_reset();
+            powered = false;
+            naks = 0;
+            mikey_decode_reset(&decode);
+            mikey_btn = BUTTON_NONE;
+        }
+
+        if (!remote_enabled || !headphones_inserted() || mic_active)
         {
             if (powered && !mic_active)
                 mikey_reset();
@@ -279,7 +338,10 @@ static void mikey_thread(void)
             naks = 0;
             mikey_decode_reset(&decode);
             mikey_btn = BUTTON_NONE;
-            sleep(HZ/2);   /* nothing to poll, check back at leisure */
+            /* nothing to poll, check back at leisure: enabling the remote
+             * takes effect within half a second, disabling it at once
+             * (mikey_button_read() checks the setting itself) */
+            sleep(HZ/2);
             continue;
         }
 
@@ -327,7 +389,17 @@ static void mikey_thread(void)
 
 int mikey_button_read(void)
 {
-    return mikey_btn;
+    return remote_enabled ? mikey_btn : BUTTON_NONE;
+}
+
+void mikey_set_remote_enabled(bool enabled)
+{
+    if (remote_enabled != enabled)
+    {
+        remote_enabled = enabled;
+        mikey_btn = BUTTON_NONE;
+        remote_generation++;
+    }
 }
 
 void mikey_init(void)

@@ -438,7 +438,6 @@ uint8_t _iap_convert_repeat_state(int rb_state) {
         [REPEAT_OFF]     = IAPIPodStateRepeatSettingState_Off,
         [REPEAT_ALL]     = IAPIPodStateRepeatSettingState_All,
         [REPEAT_ONE]     = IAPIPodStateRepeatSettingState_One,
-        [REPEAT_SHUFFLE] = IAPIPodStateRepeatSettingState_All,
 #ifdef AB_REPEAT_ENABLE
         [REPEAT_AB] = IAPIPodStateRepeatSettingState_One,
 #endif

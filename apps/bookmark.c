@@ -36,6 +36,10 @@
 #include "lang.h"
 #include "talk.h"
 #include "misc.h"
+#ifdef IPOD_6G
+#include "root_menu.h"
+#include "tagcache.h"
+#endif
 #include "splash.h"
 #include "yesno.h"
 #include "list.h"
@@ -96,6 +100,41 @@ struct resume_info{
 #define TEMP_BUF_SIZE (MAX(MAX_BOOKMARK_SIZE, MAX_PATH + 1))
 static char global_temp_buffer[TEMP_BUF_SIZE];
 
+/* Bookmark files keep Rockbox's repeat modes (0 off, 1 all, 2 one,
+ * 3 shuffled, 4 A-B), so that bookmarks stay readable both ways. The fork
+ * has no "repeat shuffled": 3 is read as repeat all (the shuffle flag of
+ * the bookmark is read as it is). */
+#define BM_REPEAT_SHUFFLED 3
+#define BM_REPEAT_AB       4
+
+static int bm_repeat_to_file(int repeat_mode)
+{
+#ifdef AB_REPEAT_ENABLE
+    if (repeat_mode == REPEAT_AB)
+        return BM_REPEAT_AB;
+#endif
+    return repeat_mode;
+}
+
+static int bm_repeat_from_file(int value)
+{
+    switch (value)
+    {
+        case REPEAT_OFF:
+        case REPEAT_ALL:
+        case REPEAT_ONE:
+            return value;
+        case BM_REPEAT_SHUFFLED:
+            return REPEAT_ALL;
+#ifdef AB_REPEAT_ENABLE
+        case BM_REPEAT_AB:
+            return REPEAT_AB;
+#endif
+        default:
+            return REPEAT_OFF;
+    }
+}
+
 static inline void get_hash(const char *key, uint32_t *hash, int len)
 {
     *hash = crc_32(key, len, *hash); /* this is probably sufficient */
@@ -151,6 +190,14 @@ static bool bookmark_get_playlist_and_track_hash(const char *bookmark,
         return false;
 
     pl_end = skip_tokens(pl_start, 1) - 1;
+#ifdef IPOD_6G
+    /* the same folder with or without its volume: "/<HDD0>/Podcasts/X/"
+     * (playback from the database) and "/Podcasts/X/" (file browser) */
+    const char *no_volume;
+    path_strip_volume(pl_start, &no_volume, false);
+    if (no_volume > pl_start && no_volume < pl_end)
+        pl_start = no_volume;
+#endif
     pl_len = pl_end - pl_start;
 
     track = pl_end + 1;
@@ -209,6 +256,7 @@ static bool parse_bookmark(char *filenamebuf,
 
         GET_LONG_TOKEN(resume_info->resume_elapsed);
         GET_INT_TOKEN(resume_info->repeat_mode);
+        resume_info->repeat_mode = bm_repeat_from_file(resume_info->repeat_mode);
         GET_BOOL_TOKEN(resume_info->shuffle);
 
         /* extract all optional bookmark tokens */
@@ -285,6 +333,18 @@ static int open_temp_bookmark(char *buf,
 /* This function adds a bookmark to a file.                                */
 /* Returns true on successful bookmark add.                                */
 /* ------------------------------------------------------------------------*/
+#ifdef IPOD_6G
+/* After writing a bookmark file: if it is "Recent Bookmarks", the main
+ * menu sidebar counts its bookmarks again */
+static void bookmark_file_changed(const char *bookmark_file_name)
+{
+    if (!strcmp(bookmark_file_name, RECENT_BOOKMARK_FILE))
+        root_menu_media_count_changed(MEDIA_COUNT_BOOKMARKS);
+}
+#else
+#define bookmark_file_changed(name) do { } while (0)
+#endif
+
 static bool add_bookmark(const char* bookmark_file_name,
                          const char* bookmark,
                          bool most_recent)
@@ -332,6 +392,14 @@ static bool add_bookmark(const char* bookmark_file_name,
 
     /* Reading in the previous bookmarks and writing them to the temp file */
     logf("opening old bookmark %s", bookmark_file_name);
+#ifdef IPOD_6G
+    /* A podcast or audiobook keeps one bookmark only: the new one replaces
+     * the old ones of its folder (docs/ipod6g-database-media-types.md) */
+    if (!most_recent && tagcache_path_media(bookmark_file_name) >
+                        TAGCACHE_MEDIA_MUSIC)
+        bookmark_file = -1;
+    else
+#endif
     bookmark_file = open(bookmark_file_name, O_RDONLY);
     if (bookmark_file >= 0)
     {
@@ -374,6 +442,7 @@ static bool add_bookmark(const char* bookmark_file_name,
 
     remove(bookmark_file_name);
     rename(fnamebuf, bookmark_file_name);
+    bookmark_file_changed(bookmark_file_name);
 
     return true;
 }
@@ -475,7 +544,7 @@ static char* create_bookmark(char **name,
                              resume_info->id3->offset,
                              resume_info->resume_seed,
                              resume_info->id3->elapsed,
-                             resume_info->repeat_mode,
+                             bm_repeat_to_file(resume_info->repeat_mode),
                              resume_info->shuffle,
                              /* ...and their values should go here */
 #if defined(HAVE_PITCHCONTROL)
@@ -954,6 +1023,7 @@ static bool delete_bookmark(const char* bookmark_file_name, int bookmark_id)
 
     remove(bookmark_file_name);
     rename(global_temp_buffer, bookmark_file_name);
+    bookmark_file_changed(bookmark_file_name);
 
     return true;
 }
@@ -1009,6 +1079,7 @@ static int select_bookmark(const char* bookmark_file_name,
                 /* No more bookmarks, delete file and exit */
                 splash(HZ, ID2P(LANG_BOOKMARK_LOAD_EMPTY));
                 remove(bookmark_file_name);
+                bookmark_file_changed(bookmark_file_name);
                 break;
             }
 
@@ -1157,6 +1228,163 @@ bool bookmark_create_menu(void)
 
     return write_bookmark(BMARK_CREATE_FILE);
 }
+#ifdef IPOD_6G
+/* Podcasts and audiobooks started from the database (play_media_folder() in
+ * tagtree.c): plays folder dir from file. If the bookmark of the folder is
+ * in this file, playback continues where it was, else the file starts from
+ * the beginning; stopping overwrites the bookmark (one per folder, see
+ * add_bookmark()). Shuffle and repeat stay as they are; bookmark_play()
+ * finds the file by its name. */
+/* Whether bookmark line is one of folder want (want_len characters, without
+ * volume and trailing '/') and, unless file is NULL, of that track. A
+ * folder counts as the same with and without its volume. */
+static bool bookmark_of(const char *line, const char *want, size_t want_len,
+                        const char *file)
+{
+    const char *pl = strchr(line, '/');
+    if (!pl)
+        return false;
+    const char *pl_end = skip_tokens(pl, 1) - 1;
+    const char *p;
+    path_strip_volume(pl, &p, false);
+    if (p < pl || p > pl_end)
+        p = pl;
+    size_t len = pl_end - p;
+    while (len > 0 && p[len - 1] == '/')
+        len--;
+    if (len != want_len || strncasecmp(p, want, len))
+        return false;
+    if (!file)
+        return true;
+    const char *track = strrchr(pl_end + 1, '/');
+    track = track ? track + 1 : pl_end + 1;
+    return !strcmp(track, file);
+}
+
+/* folder dir without volume and trailing '/' for bookmark_of() */
+static const char *folder_key(const char *dir, size_t *len)
+{
+    const char *want;
+    path_strip_volume(dir, &want, false);
+    *len = strlen(want);
+    while (*len > 0 && want[*len - 1] == '/')
+        (*len)--;
+    return want;
+}
+
+/* The bookmark of folder dir: the first one of its bookmark file, else its
+ * entry in "Recent Bookmarks" (the only one with "autocreate bookmarks:
+ * recent only"; one per folder with "unique only"). */
+static bool folder_bookmark(const char *dir, char *line, size_t size)
+{
+    char bm_filename[MAX_PATH];
+    int fd;
+
+    if (generate_bookmark_file_name(bm_filename, sizeof(bm_filename),
+                                    dir, strlen(dir)) &&
+        (fd = open(bm_filename, O_RDONLY)) >= 0)
+    {
+        bool have = read_line(fd, line, size) > 0;
+        close(fd);
+        if (have)
+            return true;
+    }
+
+    fd = open(RECENT_BOOKMARK_FILE, O_RDONLY);
+    if (fd < 0)
+        return false;
+    size_t want_len;
+    const char *want = folder_key(dir, &want_len);
+    bool found = false;
+    while (!found && read_line(fd, line, size) > 0)
+        found = bookmark_of(line, want, want_len, NULL);
+    close(fd);
+    return found;
+}
+
+/* Removes the bookmarks of folder dir in track file from bookmark file
+ * bm_file; deletes the file when none is left */
+static void remove_track_bookmarks(const char *bm_file, const char *dir,
+                                   const char *file)
+{
+    char fnamebuf[MAX_PATH];
+    char line[TEMP_BUF_SIZE];
+    size_t want_len;
+    const char *want = folder_key(dir, &want_len);
+    int kept = 0, removed = 0;
+
+    int fd = open(bm_file, O_RDONLY);
+    if (fd < 0)
+        return;
+    int tmp = open_temp_bookmark(fnamebuf, sizeof(fnamebuf),
+                                 O_WRONLY | O_CREAT | O_TRUNC, bm_file);
+    if (tmp < 0)
+    {
+        close(fd);
+        return;
+    }
+    while (read_line(fd, line, sizeof(line)) > 0)
+    {
+        if (bookmark_of(line, want, want_len, file))
+            removed++;
+        else
+        {
+            write(tmp, line, strlen(line));
+            write(tmp, "\n", 1);
+            kept++;
+        }
+    }
+    close(fd);
+    close(tmp);
+
+    if (removed == 0)
+    {
+        remove(fnamebuf);
+        return;
+    }
+    remove(bm_file);
+    if (kept > 0)
+        rename(fnamebuf, bm_file);
+    else
+        remove(fnamebuf);
+    bookmark_file_changed(bm_file);
+}
+
+/* "Mark as unheard" (tagtree.c): a bookmark in the track goes too, in the
+ * bookmark file of its folder and in "Recent Bookmarks" */
+void bookmark_forget_track(const char *path)
+{
+    char dir[MAX_PATH];
+    char bm_filename[MAX_PATH];
+    strmemccpy(dir, path, sizeof(dir));
+    char *slash = strrchr(dir, '/');
+    if (!slash || slash == dir)
+        return;
+    *slash = '\0';
+    const char *file = slash + 1;
+
+    if (generate_bookmark_file_name(bm_filename, sizeof(bm_filename),
+                                    dir, strlen(dir)))
+        remove_track_bookmarks(bm_filename, dir, file);
+    remove_track_bookmarks(RECENT_BOOKMARK_FILE, dir, file);
+}
+
+bool bookmark_play_media_folder(char *dir, char *file)
+{
+    char track[MAX_PATH];
+    char line[TEMP_BUF_SIZE];
+    struct resume_info resume;
+
+    if (folder_bookmark(dir, line, sizeof(line)) &&
+        parse_bookmark(track, sizeof(track), line, &resume, true) &&
+        !strcmp(track, file))
+        return bookmark_play(dir, resume.resume_index,
+                             resume.resume_elapsed, resume.resume_offset,
+                             resume.resume_seed, file);
+    return bookmark_play(dir, 0, 0, 0, current_tick, file);
+}
+#endif
+
 /* ----------------------------------------------------------------------- */
 /* This function acts as the load interface from the context menu.         */
 /* This function determines the bookmark file name and then loads that file*/

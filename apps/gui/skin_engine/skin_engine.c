@@ -425,6 +425,16 @@ bool dbg_skin_engine(void)
         }
     }
     simplelist_addline("%s usage: %d bytes", "Skin total", total);
+#ifdef IPOD_6G
+    {
+        /* time of the status bar updates (scrolling text waits meanwhile) */
+        unsigned last_us, max_us;
+        sb_skin_update_times(&last_us, &max_us, true);
+        simplelist_addline("SBS update: last %u.%u ms, max %u.%u ms",
+                           last_us / 1000, last_us / 100 % 10,
+                           max_us / 1000, max_us / 100 % 10);
+    }
+#endif
 #if defined(HAVE_BACKDROP_IMAGE)
     simplelist_setline("Backdrop Images:");
     i = 0;

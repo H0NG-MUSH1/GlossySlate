@@ -38,6 +38,9 @@ enum synclist_cursor
     SYNCLIST_CURSOR_INVERT,
     SYNCLIST_CURSOR_COLOR,
     SYNCLIST_CURSOR_GRADIENT,
+#ifdef IPOD_6G
+    SYNCLIST_CURSOR_GLOSS,
+#endif
 };
 
 /*
@@ -101,6 +104,28 @@ struct list_putlineinfo_t {
 };
 
 typedef void list_draw_item(struct list_putlineinfo_t *list_info);
+#ifdef IPOD_6G
+/* Optional artwork for the unskinned main-screen list.  The callback draws
+ * into the current list viewport and must not perform disk I/O. */
+typedef void list_draw_albumart(int item, void *data, int x, int y);
+typedef const char *list_get_albumartist(int item, void *data);
+/* Whether item opens another level. Its row ends in an arrow if the theme
+ * asks for that (setting "list arrows"). */
+typedef bool list_item_opens(int item, void *data);
+/* The value of item, shown at the right end of its row, or NULL */
+typedef const char *list_get_item_value(int item, void *data,
+                                        char *buffer, size_t buffer_len);
+/* A mark at the right end of a row: the speaker at the playing track, the
+ * dot at podcasts and audiobooks not heard yet. In rows with an arrow it
+ * stands left of the arrow; album rows of a list with marks leave room for
+ * it. */
+enum list_item_mark {
+    LIST_MARK_NONE = 0,
+    LIST_MARK_PLAYING,
+    LIST_MARK_UNHEARD,
+};
+typedef int list_item_mark(int item, void *data);
+#endif
 /*
  * Voice callback
  *  - selected_item : an integer that tells the number of the item to speak
@@ -169,6 +194,17 @@ struct gui_synclist
     list_get_name *callback_get_item_name;
     list_speak_item *callback_speak_item;
     list_draw_item *callback_draw_item;
+#ifdef IPOD_6G
+    list_draw_albumart *callback_draw_albumart;
+    list_get_albumartist *callback_get_albumartist;
+    list_item_opens *callback_item_opens;
+    list_get_item_value *callback_get_item_value;
+    list_item_mark *callback_item_mark;
+    int minimum_line_height;
+    /* tick of the last scroll by the user, 0 if the list has not been
+     * scrolled since it was set up; see gui_synclist_scrollbar_fade() */
+    long scrollbar_tick;
+#endif
 
     /* The data that will be passed to the callback function YOU implement */
     void * data;
@@ -228,6 +264,7 @@ extern const struct list_kinetic_scroll_settings list_kinetic_scroll_press_defau
 #endif
 
 extern void list_init(void);
+extern void list_init_item_height(struct gui_synclist *list, enum screen_type screen);
 
 extern void gui_synclist_init(
     struct gui_synclist * lists,
@@ -266,6 +303,17 @@ extern bool gui_synclist_keyclick_callback(int action, void* data);
  * NOTE: *action may be changed regardless of return value
  */
 extern bool gui_synclist_do_button(struct gui_synclist * lists, int *action);
+#ifdef IPOD_6G
+/* The scrollbar of a list on the main screen is shown while the user
+ * scrolls and LIST_SCROLLBAR_SHOW ticks after that, then it fades out within
+ * LIST_SCROLLBAR_FADE ticks. */
+#define LIST_SCROLLBAR_SHOW (1 * HZ)
+#define LIST_SCROLLBAR_FADE (35 * HZ / 100)
+/* Fade step of the scrollbar now, from 0 (shown) to
+ * GUI_SCROLLBAR_FADE_STEPS (hidden). *delay, if given, gets the ticks until
+ * the step changes, or -1 if it stays. */
+extern int gui_synclist_scrollbar_fade(struct gui_synclist *lists, int *delay);
+#endif
 #if !defined(PLUGIN)
 struct listitem_viewport_cfg;
 
@@ -275,6 +323,20 @@ bool skinlist_is_selected_item(void);
 void skinlist_set_cfg(enum screen_type screen,
                       struct listitem_viewport_cfg *cfg);
 const char* skinlist_get_item_text(int offset, bool wrap, char* buf, size_t buf_size);
+#ifdef IPOD_6G
+/* %LV and %Lo in a skinned list: the value of a setting that switches in
+ * place, and whether the item opens another level */
+const char* skinlist_get_item_value(int offset, bool wrap,
+                                    char* buf, size_t buf_size);
+bool skinlist_item_opens(void);
+/* The firmware list on the main screen drew list; remember its selection
+ * for %LT, %LV and %Lo while no skinned list is set up */
+void skinlist_note_drawn_selection(struct gui_synclist *list);
+/* "list secondary font" of the theme: (re)load it, and its id (-1: none,
+ * the list font) */
+void list_secondary_font_apply(void);
+int list_secondary_font(void);
+#endif
 int skinlist_get_item_number(void);
 int skinlist_get_item_row(void);
 int skinlist_get_item_column(void);

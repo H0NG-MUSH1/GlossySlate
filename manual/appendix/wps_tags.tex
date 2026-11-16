@@ -267,9 +267,10 @@ or \config{\%D(2)}), produce the information for the next file to be played.
 
 \section{Repeat Mode}
   \begin{tagmap}
-    \config{\%mm} & Repeat mode, 0--4, in the order: Off, All, One, Shuffle, A-B\\
+    \config{\%mm} & Repeat mode, 0--4, in the order: Off, All, One, (not used), A-B\\
   \end{tagmap}
-Example: \config{\%?mm<Off|All|One|Shuffle|A-B>}
+Example: \config{\%?mm<Off|All|One||A-B>}. The value 3 (repeat shuffled in
+Rockbox) does not occur: shuffle is a setting of its own.
 
 \section{Playback Mode}
   \begin{tagmap}

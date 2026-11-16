@@ -63,6 +63,12 @@ extern enum yesno_res gui_syncyesno_run_w_tmo(
                            const struct text_message * yes_message,
                            const struct text_message * no_message);
 
+#ifdef IPOD_6G
+/* the question on an empty screen (theme off meanwhile) */
+extern enum yesno_res gui_syncyesno_run_blank(
+                           const struct text_message * main_message);
+#endif
+
 bool yesno_pop(const char* text);
 bool yesno_pop_confirm(const char* text);
 

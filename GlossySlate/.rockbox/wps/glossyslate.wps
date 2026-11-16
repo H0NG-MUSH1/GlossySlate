@@ -1,0 +1,127 @@
+#  Glossy Slate 1.0 for Rockbox – iPod Classic 6G/7G (fork, 320 x 240)
+#  Playback skin (.wps). Built from the Glossy Slate design canvas.
+#  Layering notes: see DESIGN.md, section "Skin technique".
+#
+%wd
+%Fl(2,16-GlossySlate-Bold13.fnt,160)
+%Fl(3,20-GlossySlate-Bold17.fnt,160)
+%Fl(4,14-GlossySlate-Bold11.fnt,160)
+%Fl(5,70-GlossySlate-Clock58.fnt,12)
+%Fl(9,1-GlossySlate-Dot.fnt,1)
+%Fl(10,16-GlossySlate-Bold12.fnt,60)
+%Fl(11,16-GlossySlate-Regular13.fnt,160)
+#--- images ---#
+%xl(Batt,status_battery.bmp,0,0,12)
+%xl(Charge,status_charge.bmp,0,0,12)
+%xl(Charged,status_charged.bmp,0,0)
+%xl(Play,status_play.bmp,0,0,4)
+%xl(Spin,status_spinner.bmp,0,0,12)
+%xl(Lock,status_lock.bmp,0,0)
+%xl(LockW,status_lock_white.bmp,0,0)
+%xl(LockBox,lock_box.bmp,60,62)
+%xl(Cover116,cover116_fx.bmp,1,0,2)
+%xl(Track,wps_track.bmp,14,4)
+%xl(VTrack,wps_vtrack.bmp,34,4)
+%xl(VolLow,wps_vol_low.bmp,14,2)
+%xl(VolHigh,wps_vol_high.bmp,292,1)
+%xl(Cap,wps_cap.bmp,0,0)
+%xl(FillL,wps_fill_l.bmp,0,0)
+%xl(VFillL,wps_vfill_l.bmp,0,0)
+%xl(WShuf,wps_shuffle.bmp,0,0,2)
+%xl(WRep,wps_repeat.bmp,22,0,5)
+%xl(PillC,wps_pill_codec.bmp,0,0)
+%xl(PillR,wps_pill_rate.bmp,48,0)
+%Cl(1,4,116,116,c,c)
+#--- screen logic ---#
+%V(0,0,1,1,9)
+%?mh<%?if(%St(battery display),=,graphic)<%Vd(LkField)%Vd(LkTop)%?mp<|%Vd(LkTrack)>|%Vd(PageBg)%Vd(Player)%Vd(Bat320)%Vd(Ply320)%?mh<%?mp<%Vd(LkB320)|%Vd(LkA320)>>%?lh<%?mp<%?mh<%Vd(SpC320)|%Vd(SpD320)>|%?mh<%Vd(SpA320)|%Vd(SpB320)>>>%?mv(1.5)<%Vd(VolBg)%Vd(Vol)|%Vd(ProgBg)%Vd(Prog)>>|%Vd(PageBg)%Vd(Player)%Vd(Bat320)%Vd(Ply320)%?mh<%?mp<%Vd(LkB320)|%Vd(LkA320)>>%?lh<%?mp<%?mh<%Vd(SpC320)|%Vd(SpD320)>|%?mh<%Vd(SpA320)|%Vd(SpB320)>>>%?mv(1.5)<%Vd(VolBg)%Vd(Vol)|%Vd(ProgBg)%Vd(Prog)>>
+#--- backdrop layer ---#
+%Vl(PageBg,0,0,320,196,9)%VB
+%dr(0,0,320,21,ffffff,979797)
+%dr(0,21,320,1,1e1e1e)
+%dr(0,22,320,117,ffffff)
+%dr(0,139,320,57,ffffff,f4f6f8)
+%Vl(PageBg,144,120,104,14,9)%VB%xd(PillC)%xd(PillR)
+%Vl(ProgBg,0,196,320,44,9)%VB
+%dr(0,0,320,44,f4f6f8,ebeef2)
+%xd(Track)
+%Vl(VolBg,0,196,320,44,9)%VB
+%dr(0,0,320,44,f4f6f8,ebeef2)
+%xd(VTrack)%xd(VolLow)%xd(VolHigh)
+%Vl(LkField,0,0,320,240,9)%VB
+%dr(0,0,320,15,9ab5ce,8faecb)
+%dr(0,15,320,15,8faeca,84a7c7)
+%dr(0,30,320,15,83a7c6,7ca1c3)
+%dr(0,45,320,15,7ca1c3,7b9dbf)
+%dr(0,60,320,15,7b9dbf,7999bb)
+%dr(0,75,320,15,7998bb,7291b3)
+%dr(0,90,320,15,7190b2,6787a7)
+%dr(0,105,320,15,6786a6,5d7d9c)
+%dr(0,120,320,15,5c7c9b,52708e)
+%dr(0,135,320,15,516f8d,466380)
+%dr(0,150,320,15,45627f,3c5673)
+%dr(0,165,320,15,3b5672,324b68)
+%dr(0,180,320,15,324a67,2a405e)
+%dr(0,195,320,15,293f5d,22354e)
+%dr(0,210,320,15,22354d,1c2b3d)
+%dr(0,225,320,15,1c2b3c,16222d)
+%xd(LockBox)
+%Vl(LkTop,10,6,10,12,-)%xd(LockW)
+%Vl(LkTop,288,4,26,13,-)
+%?bp<%?bc<%xd(Charge,%bl)|%xd(Charged)>|%xd(Batt,%bl)>
+%Vl(LkTop,10,23,300,20,3)%Vf(ffffff)
+%ac%cD(long)
+%Vl(LkTop,60,72,200,70,5)%Vf(dfe6f3)
+%ac%?cf<%cH:%cM|%cl:%cM>
+%Vl(LkTrack,10,190,300,16,2)%Vf(ffffff)
+%s%ac%?mp<|► |||>%?it<%it|%fn>
+%Vl(LkTrack,10,208,300,14,4)%Vf(dce6f2)
+%s%ac%?it<%?if(%St(statusbar),=,off)<%t(5)%ia;%t(5)%id>%?if(%St(statusbar),=,top)<%id>%?if(%St(statusbar),=,bottom)<%ia>|%d(1)>
+#--- status bar ---#
+%Vl(Player,8,3,232,16,2)%Vf(14171c)
+%al%Sx(Now playing)
+%Vl(Bat320,288,4,26,13,-)
+%?bp<%?bc<%xd(Charge,%bl)|%xd(Charged)>|%xd(Batt,%bl)>
+%Vl(Ply320,276,5,8,10,-)
+%?mp<|%xd(Play,1)|%xd(Play,2)|%xd(Play,3)|%xd(Play,4)|%xd(Play,1)|%xd(Play,2)|%xd(Play,1)|%xd(Play,2)>
+%Vl(LkA320,262,4,10,12,-)%xd(Lock)
+%Vl(LkB320,274,4,10,12,-)%xd(Lock)
+%Vl(SpA320,244,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpB320,258,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpC320,256,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpD320,270,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+#--- cover 116 px, tilted, full reflection down to the progress bar (y 196), 13 px below the status bar ---#
+%Vl(Player,13,35,118,161,-)
+%?if(%St(volume display),=,graphic)<%Cd(24,420,36,34,8)|%Cd(24,420,36,34,0)>%?C<|%?if(%St(volume display),=,graphic)<%xd(Cover116,1)|%xd(Cover116,2)>>
+#--- track info ---#
+%Vl(Player,144,36,164,14,4)%Vf(5b6371)
+%pp %Sx(of) %pe
+%Vl(Player,144,56,164,20,3)%Vf(0d0f13)
+%s%?it<%it|%fn>
+%Vl(Player,144,79,164,16,2)%Vf(2e3644)
+%s%?ia<%ia|%d(1)>
+%Vl(Player,144,98,164,16,11)%Vf(5b6371)
+%s%?id<%id|%d(2)>
+%Vl(Player,144,120,44,14,4)%Vf(3b4350)
+%ac%fc
+%Vl(Player,192,120,56,14,4)%Vf(3b4350)
+%ac%fk kHz
+#--- progress ---#
+%Vl(Prog,14,200,5,9,-)%xd(FillL)
+%Vl(Prog,19,200,287,9,-)
+%pb(0,0,287,9,wps_fill_r.bmp,slider,Cap)
+%Vl(Prog,14,214,80,16,10)%Vf(2e3644)
+%al%pc
+%Vl(Prog,226,214,80,16,10)%Vf(2e3644)
+%ar−%pr
+%Vl(Prog,142,217,36,10,-)%xd(WShuf,%ps)%xd(WRep,%mm)
+#--- volume (while changing) ---#
+%Vl(Vol,34,200,5,9,-)%xd(VFillL)
+%Vl(Vol,39,200,247,9,-)
+%pv(0,0,247,9,wps_vfill_r.bmp,slider,Cap)
+%Vl(Vol,14,214,292,16,10)%Vf(2e3644)
+%ac%pv dB

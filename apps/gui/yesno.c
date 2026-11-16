@@ -31,6 +31,10 @@
 #include "splash.h"
 #include "backlight.h"
 #include "statusbar-skinned.h"
+#ifdef IPOD_6G
+#include "popup.h"
+#include "string-extra.h"
+#endif
 
 struct gui_yesno
 {
@@ -83,6 +87,20 @@ static void gui_yesno_draw(struct gui_yesno * yn)
     enum yesno_res def_res = yn->tmo_default_res;
     const struct text_message *main_message = yn->main_message;
     int line_shift = 0;
+#if defined(IPOD_6G) && GS_POPUPS
+    /* GlossySlate popup with "Yes" and "No" keys (gui/popup.c) */
+    if (display->screen_type == SCREEN_MAIN)
+    {
+        const char *lines[8];
+        int n = MIN(main_message->nb_lines, (int)ARRAYLEN(lines));
+        for (int i = 0; i < n; i++)
+            lines[i] = P2STR((unsigned char *)main_message->message_lines[i]);
+        int seconds = (def_res == YESNO_YES || def_res == YESNO_NO) ?
+            MAX(0, (int)((yn->end_tick - current_tick) / HZ)) : -1;
+        popup_yesno(lines, n, seconds, def_res == YESNO_YES);
+        return;
+    }
+#endif
     struct viewport *last_vp = display->set_viewport_ex(vp, VP_FLAG_VP_SET_CLEAN);
 
     /* do our own clear to avoid stopping scrolling */
@@ -181,6 +199,23 @@ static void gui_yesno_draw_result(struct gui_yesno * yn, const struct text_messa
 {
     struct viewport *vp = &yn->vp;
     struct screen * display=yn->display;
+#if defined(IPOD_6G) && GS_POPUPS
+    /* the answer as a GlossySlate message */
+    if (display->screen_type == SCREEN_MAIN)
+    {
+        static char text[256];
+        text[0] = '\0';
+        for (int i = 0; i < message->nb_lines; i++)
+        {
+            if (i)
+                strlcat(text, "\n", sizeof(text));
+            strlcat(text, P2STR((unsigned char *)message->message_lines[i]),
+                    sizeof(text));
+        }
+        popup_message(text, -1);
+        return;
+    }
+#endif
     struct viewport *last_vp = display->set_viewport_ex(vp, VP_FLAG_VP_SET_CLEAN);
 
     display->clear_viewport();
@@ -215,6 +250,12 @@ static void gui_yesno_ui_update(unsigned short id, void *event_data, void *user_
  *  yes_message - displayed when YESNO_YES is choosen
  *   no_message - displayed when YESNO_NO is choosen
 */
+#ifdef IPOD_6G
+/* gui_syncyesno_run_blank(): the question on an empty screen, the theme
+ * stays off (no status bar skin drawing behind the popup) */
+static bool yesno_blank;
+#endif
+
 enum yesno_res gui_syncyesno_run_w_tmo(int ticks, enum yesno_res tmo_default_res,
                                        const char * title,
                                        const struct text_message * main_message,
@@ -243,7 +284,17 @@ enum yesno_res gui_syncyesno_run_w_tmo(int ticks, enum yesno_res tmo_default_res
         yn[i].display=&screens[i];
         screens[i].scroll_stop();
         sb_set_persistent_title(title, Icon_NOICON, i);
+#ifdef IPOD_6G
+        viewportmanager_theme_enable(i, !yesno_blank, &(yn[i].vp));
+        if (yesno_blank)
+        {
+            screens[i].set_viewport(NULL);
+            screens[i].clear_display();
+            screens[i].update();
+        }
+#else
         viewportmanager_theme_enable(i, true, &(yn[i].vp));
+#endif
 
         yn[i].vp_lines = viewport_get_nb_lines(&(yn[i].vp));
     }
@@ -349,6 +400,9 @@ exit:
             sleep(HZ);
         }
     }
+#if defined(IPOD_6G) && GS_POPUPS
+    popup_close(); /* the screen as it was */
+#endif
 
     FOR_NB_SCREENS(i)
     {
@@ -370,6 +424,21 @@ enum yesno_res gui_syncyesno_run(const struct text_message * main_message,
     return gui_syncyesno_run_w_tmo(TIMEOUT_BLOCK, YESNO_TMO, NULL,
                                    main_message, yes_message, no_message);
 }
+
+#ifdef IPOD_6G
+/* For questions while the screen behind is in no state to be shown, e.g.
+ * "Boot file changed, reboot now?" right after USB: pieces of the USB
+ * screen and of the menu not yet redrawn. The theme is switched back on
+ * (and everything redrawn) when the question is answered. */
+enum yesno_res gui_syncyesno_run_blank(const struct text_message * main_message)
+{
+    yesno_blank = true;
+    enum yesno_res res = gui_syncyesno_run_w_tmo(TIMEOUT_BLOCK, YESNO_TMO,
+                                                NULL, main_message, NULL, NULL);
+    yesno_blank = false;
+    return res;
+}
+#endif
 
 extern enum yesno_res gui_syncyesno_run_w_title(
                                  const char * title,

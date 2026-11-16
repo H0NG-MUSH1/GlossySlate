@@ -1,0 +1,347 @@
+#  Glossy Slate 1.0 for Rockbox – iPod Classic 6G/7G (fork, 320 x 240)
+#  Status bar skin (.sbs): menus, lists, sidebar, lock screen, USB. Built from the Glossy Slate design canvas.
+#  Layering notes: see DESIGN.md, section "Skin technique".
+#
+%Fl(2,16-GlossySlate-Bold13.fnt,160)
+%Fl(3,20-GlossySlate-Bold17.fnt,160)
+%Fl(4,14-GlossySlate-Bold11.fnt,160)
+%Fl(5,70-GlossySlate-Clock58.fnt,12)
+%Fl(6,46-GlossySlate-Day46.fnt,11)
+%Fl(7,113-GlossySlate-Tiles.fnt,2)
+%Fl(8,84-GlossySlate-Hands.fnt,2)
+%Fl(9,1-GlossySlate-Dot.fnt,1)
+%Fl(10,16-GlossySlate-Bold12.fnt,160)
+#--- images ---#
+%xl(Sidebar,sidebar.bmp,0,0)
+%xl(TileFrame,tileframe.bmp,41,79)
+%xl(SideSym,side_symbols.bmp,36,75,11)
+%xl(ClockFace,clockface.bmp,20,48)
+%xl(ClockDot,clockdot.bmp,0,0)
+%xl(Calendar,calendar.bmp,22,68)
+%xl(Cover100,cover100_fx.bmp,1,0,2)
+%xl(ArtPrev,artprev.bmp,41,79,2)
+%xl(LockPrev,lockprev.bmp,15,61,2)
+%xl(SysLogo,system_logo.bmp,36,51)
+%xl(Batt,status_battery.bmp,0,0,12)
+%xl(Charge,status_charge.bmp,0,0,12)
+%xl(Charged,status_charged.bmp,0,0)
+%xl(Play,status_play.bmp,0,0,4)
+#--- quick menu images ---#
+%xl(QsKapB,qs_capsule_battery.bmp,14,14)
+%xl(QsKapT,qs_capsule_timer.bmp,98,14)
+%xl(QsMoon,qs_moon.bmp,109,20)
+%xl(QsBack,qs_back.bmp,282,14)
+%xl(QsLine,qs_line.bmp,14,58)
+%xl(QsVol,qs_volume.bmp,14,75)
+%xl(QsBri,qs_bright.bmp,14,110)
+%xl(QsMini,qs_mini_bat.bmp,0,0,12)
+%xl(QsLockI,qs_lock.bmp,0,0)
+%xl(QsTrk1,qs_track.bmp,40,78)
+%xl(QsTrk2,qs_track.bmp,40,114)
+%xl(QsFillL,qs_fill_l.bmp,0,0)
+%xl(QsCap,qs_cap.bmp,0,0)
+%xl(QsSw,qs_switch.bmp,0,0,2)
+%xl(QsShuf,qs_shuffle.bmp,60,6,2)
+%xl(QsRep,qs_repeat.bmp,58,4,3)
+%xl(QsArrL,qs_arrows.bmp,10,29,4)
+%xl(QsArrR,qs_arrows.bmp,127,29,4)
+%xl(Spin,status_spinner.bmp,0,0,12)
+%xl(Lock,status_lock.bmp,0,0)
+%xl(LockW,status_lock_white.bmp,0,0)
+%xl(SpinK,status_spinner_light.bmp,0,0,12)
+%xl(BattM,status_battery_mono.bmp,0,0,12)
+%xl(ChargeM,status_charge_mono.bmp,0,0,12)
+%xl(HomeSpk,home_speaker.bmp,0,0)
+%xl(HomeShf,home_shuffle.bmp,30,0,2)
+%xl(HomeRep,home_repeat.bmp,62,0,5)
+%xl(UsbLogo,usb_logo.bmp,0,0,2)
+%xl(LockBox,lock_box.bmp,60,62)
+%xl(Check,row_check.bmp,2,8)
+%Cl(1,3,100,100,c,c)
+#--- UI viewports ---#
+%Vi(Half,0,22,160,218,-)
+%Vi(Full,0,22,320,218,-)
+%Vi(Hidden,0,0,1,1,9)
+#--- screen logic ---#
+%V(0,0,1,1,9)
+%?and(%mh,%if(%St(battery display),=,graphic),%if(%cs,!=,21),%if(%cs,!=,22))<%VI(Hidden)%Vd(LkField)%Vd(LkTop)%?mp<|%Vd(LkTrack)>>
+%?if(%cs,=,1)<%?and(%mh,%if(%St(battery display),=,graphic),%if(%cs,!=,21),%if(%cs,!=,22))<|%VI(Half)%Vd(SbHalf)%?or(%mh,%lh)<%Vd(TitleHalf)|%Vd(TitleHalfL)>%Vd(Bat160)%Vd(Ply160)%?mh<%?mp<%Vd(LkB160)|%Vd(LkA160)>>%?lh<%?mp<%?mh<%Vd(SpC160)|%Vd(SpD160)>|%?mh<%Vd(SpA160)|%Vd(SpB160)>>>%?mp<%?if(%LT,=,%Sx(Podcasts))<%Vd(SidePod)>%?if(%LT,=,%Sx(Audiobooks))<%Vd(SideBook)>%?or(%if(%LT,=,%Sx(Music)),%if(%LT,=,%Sx(Now Playing)),%if(%LT,=,%Sx(Resume Playback)))<%Vd(SideNote)>%?if(%LT,=,%Sx(Playlists))<%Vd(SidePlay)>%?if(%LT,=,%Sx(Settings))<%Vd(SideSet)>%?if(%LT,=,%Sx(System))<%Vd(SideInfo)>%?if(%LT,=,%Sx(Recent Bookmarks))<%Vd(SideBkm)>%?if(%LT,=,%Sx(Recording))<%Vd(SideRec)>%?if(%LT,=,%Sx(Files))<%Vd(SideFiles)>%?if(%LT,=,%Sx(Plugins))<%Vd(SidePlug)>%?if(%LT,=,%Sx(Shortcuts))<%Vd(SideShort)>%?and(%if(%LT,!=,%Sx(Podcasts)),%if(%LT,!=,%Sx(Audiobooks)),%if(%LT,!=,%Sx(Music)),%if(%LT,!=,%Sx(Now Playing)),%if(%LT,!=,%Sx(Resume Playback)),%if(%LT,!=,%Sx(Playlists)),%if(%LT,!=,%Sx(Settings)),%if(%LT,!=,%Sx(System)),%if(%LT,!=,%Sx(Recent Bookmarks)),%if(%LT,!=,%Sx(Recording)),%if(%LT,!=,%Sx(Files)),%if(%LT,!=,%Sx(Plugins)),%if(%LT,!=,%Sx(Shortcuts)))<%Vd(SideTile)>%Vd(TileMain)|%?or(%if(%LT,=,%Sx(Now Playing)),%if(%LT,=,%Sx(Resume Playback)))<%Vd(SideCover)%Vd(Cover)%Vd(CoverText)|%?if(%LT,=,%Sx(Podcasts))<%Vd(SidePod)>%?if(%LT,=,%Sx(Audiobooks))<%Vd(SideBook)>%?or(%if(%LT,=,%Sx(Music)),%if(%LT,=,%Sx(Now Playing)),%if(%LT,=,%Sx(Resume Playback)))<%Vd(SideNote)>%?if(%LT,=,%Sx(Playlists))<%Vd(SidePlay)>%?if(%LT,=,%Sx(Settings))<%Vd(SideSet)>%?if(%LT,=,%Sx(System))<%Vd(SideInfo)>%?if(%LT,=,%Sx(Recent Bookmarks))<%Vd(SideBkm)>%?if(%LT,=,%Sx(Recording))<%Vd(SideRec)>%?if(%LT,=,%Sx(Files))<%Vd(SideFiles)>%?if(%LT,=,%Sx(Plugins))<%Vd(SidePlug)>%?if(%LT,=,%Sx(Shortcuts))<%Vd(SideShort)>%?and(%if(%LT,!=,%Sx(Podcasts)),%if(%LT,!=,%Sx(Audiobooks)),%if(%LT,!=,%Sx(Music)),%if(%LT,!=,%Sx(Now Playing)),%if(%LT,!=,%Sx(Resume Playback)),%if(%LT,!=,%Sx(Playlists)),%if(%LT,!=,%Sx(Settings)),%if(%LT,!=,%Sx(System)),%if(%LT,!=,%Sx(Recent Bookmarks)),%if(%LT,!=,%Sx(Recording)),%if(%LT,!=,%Sx(Files)),%if(%LT,!=,%Sx(Plugins)),%if(%LT,!=,%Sx(Shortcuts)))<%Vd(SideTile)>%Vd(TileMain)>>>>
+%?if(%cs,=,6)<%?and(%mh,%if(%St(battery display),=,graphic),%if(%cs,!=,21),%if(%cs,!=,22))<|%VI(Half)%Vd(SbHalf)%?or(%mh,%lh)<%Vd(TitleHalf)|%Vd(TitleHalfL)>%Vd(Bat160)%Vd(Ply160)%?mh<%?mp<%Vd(LkB160)|%Vd(LkA160)>>%?lh<%?mp<%?mh<%Vd(SpC160)|%Vd(SpD160)>|%?mh<%Vd(SpA160)|%Vd(SpB160)>>>%?if(%LT,=,%Sx(Time & Date))<%Vd(SideCal)%Vd(Cal)|%?or(%if(%LT,=,%Sx(Album Art Corners)),%if(%LT,=,%Sx(Volume Display)))<%?if(%St(volume display),=,graphic)<%Vd(SideArtR)|%Vd(SideArtS)>%Vd(TileArt)|%?or(%if(%LT,=,%Sx(Key Lock)),%if(%LT,=,%Sx(Battery Display)))<%?if(%St(battery display),=,graphic)<%Vd(SideLockS)|%Vd(SideLockN)>%Vd(TileLock)|%Vd(SideTile)%Vd(TileSet)>>>>>
+%?if(%cs,=,12)<%?and(%mh,%if(%St(battery display),=,graphic),%if(%cs,!=,21),%if(%cs,!=,22))<|%VI(Half)%Lb(OptRow,160,24)%Vd(SbHalf)%?or(%mh,%lh)<%Vd(TitleHalf)|%Vd(TitleHalfL)>%Vd(Bat160)%Vd(Ply160)%?mh<%?mp<%Vd(LkB160)|%Vd(LkA160)>>%?lh<%?mp<%?mh<%Vd(SpC160)|%Vd(SpD160)>|%?mh<%Vd(SpA160)|%Vd(SpB160)>>>%?or(%if(%Lt,=,%Sx(Album Art Corners)),%if(%Lt,=,%Sx(Volume Display)))<%?or(%if(%LT,=,%Sx(Square)),%if(%LT,=,%Sx(Numeric)))<%Vd(SideArtS)|%Vd(SideArtR)>%Vd(TileArtOpt)|%?or(%if(%Lt,=,%Sx(Key Lock)),%if(%Lt,=,%Sx(Battery Display)))<%?or(%if(%LT,=,%Sx(Normal)),%if(%LT,=,%Sx(Numeric)))<%Vd(SideLockN)|%Vd(SideLockS)>%Vd(TileLockOpt)|%Vd(SideTile)%Vd(TileOpt)>>>>
+%?if(%cs,=,16)<%?and(%mh,%if(%St(battery display),=,graphic),%if(%cs,!=,21),%if(%cs,!=,22))<|%VI(Half)%Vd(SbHalf)%?or(%mh,%lh)<%Vd(TitleHalf)|%Vd(TitleHalfL)>%Vd(Bat160)%Vd(Ply160)%?mh<%?mp<%Vd(LkB160)|%Vd(LkA160)>>%?lh<%?mp<%?mh<%Vd(SpC160)|%Vd(SpD160)>|%?mh<%Vd(SpA160)|%Vd(SpB160)>>>%Vd(SideSys)%Vd(TileSys)>>
+%?if(%cs,=,17)<%?and(%mh,%if(%St(battery display),=,graphic),%if(%cs,!=,21),%if(%cs,!=,22))<|%VI(Half)%Vd(SbHalf)%?or(%mh,%lh)<%Vd(TitleHalf)|%Vd(TitleHalfL)>%Vd(Bat160)%Vd(Ply160)%?mh<%?mp<%Vd(LkB160)|%Vd(LkA160)>>%?lh<%?mp<%?mh<%Vd(SpC160)|%Vd(SpD160)>|%?mh<%Vd(SpA160)|%Vd(SpB160)>>>%Vd(SideCal)%Vd(Cal)>>
+%?or(%if(%cs,=,21),%if(%cs,=,22))<%VI(Hidden)%Vd(UsbField)%Vd(SbUsb)%Vd(TitleUsb)%?if(%cs,=,22)<%Vd(UsbAus)|%Vd(Usb)>%Vd(BatUsb)%Vd(Ply320K)%?mh<%?mp<%Vd(LkB320K)|%Vd(LkA320K)>>%?lh<%?mp<%?mh<%Vd(SpC320K)|%Vd(SpD320K)>|%?mh<%Vd(SpA320K)|%Vd(SpB320K)>>>>
+%?if(%cs,=,10)<%?and(%mh,%if(%St(battery display),=,graphic),%if(%cs,!=,21),%if(%cs,!=,22))<|%VI(Hidden)%Vd(QsField)%Vd(QsTop)%?mh<%Vd(QsLock)>%Vd(QsMain)%?ps<%Vd(QsLeftOn)|%Vd(QsLeftOff)>%?mm<%Vd(QsRightOff)|%Vd(QsRightOn)|%Vd(QsRightOne)||%Vd(QsRightOn)>>>
+%?and(%if(%cs,!=,1),%if(%cs,!=,6),%if(%cs,!=,10),%if(%cs,!=,12),%if(%cs,!=,16),%if(%cs,!=,17),%if(%cs,!=,21),%if(%cs,!=,22))<%?and(%mh,%if(%St(battery display),=,graphic),%if(%cs,!=,21),%if(%cs,!=,22))<|%VI(Full)%Vd(SbFull)%Vd(TitleFull)%Vd(Bat320)%Vd(Ply320)%?mh<%?mp<%Vd(LkB320)|%Vd(LkA320)>>%?lh<%?mp<%?mh<%Vd(SpC320)|%Vd(SpD320)>|%?mh<%Vd(SpA320)|%Vd(SpB320)>>>>>
+#--- backdrop layer (%VB) ---#
+# white base of the backdrop layer: the lists clear their area with it
+%V(0,0,320,240,9)%VB
+%dr(0,0,320,240,ffffff)
+#--- quick menu backdrop ---#
+%Vl(QsField,0,0,320,240,9)%VB
+%dr(0,0,320,132,f7f8fa,edeff3)
+%dr(0,132,320,108,edeff3,dfe3e9)
+%xd(QsKapB)%xd(QsKapT)%xd(QsMoon)%xd(QsBack)%xd(QsLine)%xd(QsVol)%xd(QsBri)%xd(QsTrk1)%xd(QsTrk2)
+# USB field first: the status bar is drawn over it
+%Vl(UsbField,0,0,320,240,9)%VB
+%dr(0,0,320,15,9ab5ce,8faecb)
+%dr(0,15,320,15,8faeca,84a7c7)
+%dr(0,30,320,15,83a7c6,7ca1c3)
+%dr(0,45,320,15,7ca1c3,7b9dbf)
+%dr(0,60,320,15,7b9dbf,7999bb)
+%dr(0,75,320,15,7998bb,7291b3)
+%dr(0,90,320,15,7190b2,6787a7)
+%dr(0,105,320,15,6786a6,5d7d9c)
+%dr(0,120,320,15,5c7c9b,52708e)
+%dr(0,135,320,15,516f8d,466380)
+%dr(0,150,320,15,45627f,3c5673)
+%dr(0,165,320,15,3b5672,324b68)
+%dr(0,180,320,15,324a67,2a405e)
+%dr(0,195,320,15,293f5d,22354e)
+%dr(0,210,320,15,22354d,1c2b3d)
+%dr(0,225,320,15,1c2b3c,16222d)
+%Vl(SbUsb,0,0,320,22,9)%VB
+%dr(0,0,320,21,292c31,101018)
+%dr(0,21,320,1,000000)
+%Vl(SbFull,0,0,320,22,9)%VB
+%dr(0,0,320,21,ffffff,979797)
+%dr(0,21,320,1,1e1e1e)
+%Vl(SbHalf,0,0,160,22,9)%VB
+%dr(0,0,160,21,ffffff,979797)
+%dr(0,21,160,1,1e1e1e)
+%Vl(SideCover,160,0,160,240,9)%VB%xd(Sidebar)
+%Vl(SideTile,160,0,160,240,9)%VB%xd(Sidebar)%xd(TileFrame)
+%Vl(SideSys,160,0,160,240,9)%VB%xd(Sidebar)%xd(SysLogo)
+%Vl(SidePod,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,1)
+%Vl(SideNote,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,2)
+%Vl(SideBook,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,3)
+%Vl(SidePlay,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,4)
+%Vl(SideSet,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,5)
+%Vl(SideInfo,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,7)
+%Vl(SideBkm,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,6)
+%Vl(SideRec,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,8)
+%Vl(SideFiles,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,9)
+%Vl(SidePlug,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,10)
+%Vl(SideShort,160,0,160,240,9)%VB%xd(Sidebar)%xd(SideSym,11)
+%Vl(SideHome,160,0,160,240,9)%VB%xd(Sidebar)%xd(ClockFace)
+%Vl(SideCal,160,0,160,240,9)%VB%xd(Sidebar)%xd(Calendar)
+%Vl(SideArtR,160,0,160,240,9)%VB%xd(Sidebar)%xd(ArtPrev,1)
+%Vl(SideArtS,160,0,160,240,9)%VB%xd(Sidebar)%xd(ArtPrev,2)
+%Vl(SideLockN,160,0,160,240,9)%VB%xd(Sidebar)%xd(LockPrev,1)
+%Vl(SideLockS,160,0,160,240,9)%VB%xd(Sidebar)%xd(LockPrev,2)
+%Vl(LkField,0,0,320,240,9)%VB
+%dr(0,0,320,15,9ab5ce,8faecb)
+%dr(0,15,320,15,8faeca,84a7c7)
+%dr(0,30,320,15,83a7c6,7ca1c3)
+%dr(0,45,320,15,7ca1c3,7b9dbf)
+%dr(0,60,320,15,7b9dbf,7999bb)
+%dr(0,75,320,15,7998bb,7291b3)
+%dr(0,90,320,15,7190b2,6787a7)
+%dr(0,105,320,15,6786a6,5d7d9c)
+%dr(0,120,320,15,5c7c9b,52708e)
+%dr(0,135,320,15,516f8d,466380)
+%dr(0,150,320,15,45627f,3c5673)
+%dr(0,165,320,15,3b5672,324b68)
+%dr(0,180,320,15,324a67,2a405e)
+%dr(0,195,320,15,293f5d,22354e)
+%dr(0,210,320,15,22354d,1c2b3d)
+%dr(0,225,320,15,1c2b3c,16222d)
+%xd(LockBox)
+%Vl(LkTop,10,6,10,12,-)%xd(LockW)
+%Vl(LkTop,288,4,26,13,-)
+%?bp<%?bc<%xd(Charge,%bl)|%xd(Charged)>|%xd(Batt,%bl)>
+%Vl(LkTop,10,23,300,20,3)%Vf(ffffff)
+%ac%cD(long)
+%Vl(LkTop,60,72,200,70,5)%Vf(dfe6f3)
+%ac%?cf<%cH:%cM|%cl:%cM>
+%Vl(LkTrack,10,190,300,16,2)%Vf(ffffff)
+%s%ac%?mp<|► |||>%?it<%it|%fn>
+%Vl(LkTrack,10,208,300,14,4)%Vf(dce6f2)
+%s%ac%?it<%?if(%St(statusbar),=,off)<%t(5)%ia;%t(5)%id>%?if(%St(statusbar),=,top)<%id>%?if(%St(statusbar),=,bottom)<%ia>|%d(1)>
+#--- list rows of the option pages ---#
+%Vl(OptRow,0,0,8,24,1)
+%?Lc<%Vs(gloss)%Vg(5896e6,1a55be,ffffff)|%Vs(clear)>
+%Vl(OptRow,140,0,20,24,1)
+%?Lc<%Vs(gloss)%Vg(5896e6,1a55be,ffffff)|%Vs(clear)>%?Lc<%xd(Check)>
+%Vl(OptRow,8,0,132,24,1)%Vf(0d0f13)
+%?Lc<%Vs(gloss)%Vg(5896e6,1a55be,ffffff)|%Vs(clear)>%s%LT
+#--- status bar ---#
+%Vl(TitleHalf,8,3,72,16,2)%Vf(14171c)
+%s%al%Lt
+%Vl(TitleHalfL,8,3,104,16,2)%Vf(14171c)
+%s%al%Lt
+%Vl(TitleFull,8,3,232,16,2)%Vf(14171c)
+%s%al%Lt
+%Vl(TitleUsb,76,3,168,16,2)%Vf(eef3f5)
+%s%aciPod
+%Vl(Bat160,128,4,26,13,-)
+%?bp<%?bc<%xd(Charge,%bl)|%xd(Charged)>|%xd(Batt,%bl)>
+%Vl(Ply160,116,5,8,10,-)
+%?mp<|%xd(Play,1)|%xd(Play,2)|%xd(Play,3)|%xd(Play,4)|%xd(Play,1)|%xd(Play,2)|%xd(Play,1)|%xd(Play,2)>
+%Vl(LkA160,102,4,10,12,-)%xd(Lock)
+%Vl(LkB160,114,4,10,12,-)%xd(Lock)
+%Vl(SpA160,84,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpB160,98,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpC160,96,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpD160,110,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(Bat320,288,4,26,13,-)
+%?bp<%?bc<%xd(Charge,%bl)|%xd(Charged)>|%xd(Batt,%bl)>
+%Vl(BatUsb,288,4,26,13,-)
+%?bc<%xd(ChargeM,%bl)|%xd(BattM,%bl)>
+%Vl(Ply320,276,5,8,10,-)
+%?mp<|%xd(Play,1)|%xd(Play,2)|%xd(Play,3)|%xd(Play,4)|%xd(Play,1)|%xd(Play,2)|%xd(Play,1)|%xd(Play,2)>
+%Vl(LkA320,262,4,10,12,-)%xd(Lock)
+%Vl(LkB320,274,4,10,12,-)%xd(Lock)
+%Vl(SpA320,244,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpB320,258,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpC320,256,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(SpD320,270,4,14,14,-)
+%t(0.1)%xd(Spin,1);%t(0.1)%xd(Spin,2);%t(0.1)%xd(Spin,3);%t(0.1)%xd(Spin,4);%t(0.1)%xd(Spin,5);%t(0.1)%xd(Spin,6);%t(0.1)%xd(Spin,7);%t(0.1)%xd(Spin,8);%t(0.1)%xd(Spin,9);%t(0.1)%xd(Spin,10);%t(0.1)%xd(Spin,11);%t(0.1)%xd(Spin,12)
+%Vl(Ply320K,276,5,8,10,-)
+%?mp<|%xd(Play,1)|%xd(Play,2)|%xd(Play,3)|%xd(Play,4)|%xd(Play,1)|%xd(Play,2)|%xd(Play,1)|%xd(Play,2)>
+%Vl(LkA320K,262,4,10,12,-)%xd(LockW)
+%Vl(LkB320K,274,4,10,12,-)%xd(LockW)
+%Vl(SpA320K,244,4,14,14,-)
+%t(0.1)%xd(SpinK,1);%t(0.1)%xd(SpinK,2);%t(0.1)%xd(SpinK,3);%t(0.1)%xd(SpinK,4);%t(0.1)%xd(SpinK,5);%t(0.1)%xd(SpinK,6);%t(0.1)%xd(SpinK,7);%t(0.1)%xd(SpinK,8);%t(0.1)%xd(SpinK,9);%t(0.1)%xd(SpinK,10);%t(0.1)%xd(SpinK,11);%t(0.1)%xd(SpinK,12)
+%Vl(SpB320K,258,4,14,14,-)
+%t(0.1)%xd(SpinK,1);%t(0.1)%xd(SpinK,2);%t(0.1)%xd(SpinK,3);%t(0.1)%xd(SpinK,4);%t(0.1)%xd(SpinK,5);%t(0.1)%xd(SpinK,6);%t(0.1)%xd(SpinK,7);%t(0.1)%xd(SpinK,8);%t(0.1)%xd(SpinK,9);%t(0.1)%xd(SpinK,10);%t(0.1)%xd(SpinK,11);%t(0.1)%xd(SpinK,12)
+%Vl(SpC320K,256,4,14,14,-)
+%t(0.1)%xd(SpinK,1);%t(0.1)%xd(SpinK,2);%t(0.1)%xd(SpinK,3);%t(0.1)%xd(SpinK,4);%t(0.1)%xd(SpinK,5);%t(0.1)%xd(SpinK,6);%t(0.1)%xd(SpinK,7);%t(0.1)%xd(SpinK,8);%t(0.1)%xd(SpinK,9);%t(0.1)%xd(SpinK,10);%t(0.1)%xd(SpinK,11);%t(0.1)%xd(SpinK,12)
+%Vl(SpD320K,270,4,14,14,-)
+%t(0.1)%xd(SpinK,1);%t(0.1)%xd(SpinK,2);%t(0.1)%xd(SpinK,3);%t(0.1)%xd(SpinK,4);%t(0.1)%xd(SpinK,5);%t(0.1)%xd(SpinK,6);%t(0.1)%xd(SpinK,7);%t(0.1)%xd(SpinK,8);%t(0.1)%xd(SpinK,9);%t(0.1)%xd(SpinK,10);%t(0.1)%xd(SpinK,11);%t(0.1)%xd(SpinK,12)
+#--- main menu: home page (nothing playing) ---#
+%Vl(Home,200,16,82,14,-)%xd(HomeSpk)%xd(HomeShf,%ps)%xd(HomeRep,%mm)
+%Vl(Home,198,66,84,84,8)%Vf(14161b)
+%al%?cl<%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>|%?cM<|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||>>
+%Vl(Home,237,105,6,6,-)%xd(ClockDot)
+%Vl(Home,165,184,150,14,4)%Vf(dce6f2)
+%ac%cD(weekday)
+%Vl(Home,165,201,150,20,3)%Vf(ffffff)
+%ac%cD(short)
+#--- main menu: now playing (cover 100 px) ---#
+%Vl(Cover,189,33,102,142,-)
+%?if(%St(volume display),=,graphic)<%Cd(24,420,36,60,8)|%Cd(24,420,36,60,0)>%?C<|%?if(%St(volume display),=,graphic)<%xd(Cover100,1)|%xd(Cover100,2)>>
+%Vl(CoverText,168,185,144,16,2)%Vf(ffffff)
+%s%ac%?it<%it|%fn>
+%Vl(CoverText,168,203,144,14,4)%Vf(dce6f2)
+%s%ac%?it<%?if(%St(statusbar),=,off)<%t(5)%ia;%t(5)%id>%?if(%St(statusbar),=,top)<%id>%?if(%St(statusbar),=,bottom)<%ia>|%d(1)>
+#--- main menu: tiles ---#
+%Vl(TileMain,201,79,78,113,7)%Vf(dfe6f3)
+%al%?if(%LT,=,%Sx(FM Radio))<>%?and(%if(%LT,!=,%Sx(Files)),%if(%LT,!=,%Sx(Music)),%if(%LT,!=,%Sx(Settings)),%if(%LT,!=,%Sx(Recording)),%if(%LT,!=,%Sx(FM Radio)),%if(%LT,!=,%Sx(Playlists)),%if(%LT,!=,%Sx(Plugins)),%if(%LT,!=,%Sx(System)),%if(%LT,!=,%Sx(Shortcuts)),%if(%LT,!=,%Sx(Recent Bookmarks)),%if(%LT,!=,%Sx(Podcasts)),%if(%LT,!=,%Sx(Audiobooks)),%if(%LT,!=,%Sx(Now Playing)),%if(%LT,!=,%Sx(Resume Playback)))<>
+%Vl(TileMain,165,17,150,20,3)%Vf(ffffff)
+%s%ac%LT
+%Vl(TileMain,165,202,150,16,2)%Vf(ffffff)
+%s%ac%?if(%LT,=,%Sx(Music))<%?Mc(albums)<%?if(%Mc(albums),=,0)<%Sx(No music)|%?if(%Mc(albums),=,1)<%Sx(1 album)|%Mc(albums) %Sx(albums)>>>>%?if(%LT,=,%Sx(Recording))<%?Mc(recordings)<%?if(%Mc(recordings),=,0)<%Sx(No recordings)|%?if(%Mc(recordings),=,1)<%Sx(1 recording)|%Mc(recordings) %Sx(recordings)>>>>%?if(%LT,=,%Sx(Playlists))<%?Mc(playlists)<%?if(%Mc(playlists),=,0)<%Sx(No playlists)|%?if(%Mc(playlists),=,1)<%Sx(1 playlist)|%Mc(playlists) %Sx(playlists)>>>>%?if(%LT,=,%Sx(Shortcuts))<%?Mc(shortcuts)<%?if(%Mc(shortcuts),=,0)<%Sx(No shortcuts)|%?if(%Mc(shortcuts),=,1)<%Sx(1 shortcut)|%Mc(shortcuts) %Sx(shortcuts)>>>>%?if(%LT,=,%Sx(Recent Bookmarks))<%?Mc(bookmarks)<%?if(%Mc(bookmarks),=,0)<%Sx(No bookmarks)|%?if(%Mc(bookmarks),=,1)<%Sx(1 bookmark)|%Mc(bookmarks) %Sx(bookmarks)>>>>%?if(%LT,=,%Sx(Podcasts))<%?Mc(podcasts)<%?if(%Mc(podcasts),=,0)<%Sx(No podcasts)|%?if(%Mc(podcasts),=,1)<%Sx(1 podcast)|%Mc(podcasts) %Sx(podcasts)>>>>%?if(%LT,=,%Sx(Audiobooks))<%?Mc(audiobooks)<%?if(%Mc(audiobooks),=,0)<%Sx(No audiobooks)|%?if(%Mc(audiobooks),=,1)<%Sx(1 audiobook)|%Mc(audiobooks) %Sx(audiobooks)>>>>%?or(%if(%LT,=,%Sx(Now Playing)),%if(%LT,=,%Sx(Resume Playback)))<%Sx(Nothing playing)>
+#--- settings ---#
+%Vl(TileSet,201,79,78,113,7)%Vf(dfe6f3)
+%al%?if(%LT,=,%Sx(Playback Settings))<>%?if(%LT,=,%Sx(Sound Settings))<>%?if(%LT,=,%Sx(General Settings))<>%?if(%LT,=,%Sx(Theme Settings))<>%?if(%LT,=,%Sx(Recording Settings))<>%?if(%LT,=,%Sx(Voice))<>%?if(%LT,=,%Sx(Database))<>%?if(%LT,=,%Sx(Bookmarking))<>%?or(%if(%LT,=,%Sx(Reset Settings)),%if(%LT,=,%Sx(Manage Settings)))<>%?if(%LT,=,%Sx(Shuffle))<%?ps<|>>%?if(%LT,=,%Sx(Repeat))<%?mm<||||>>%?if(%LT,=,%Sx(Volume))<>%?if(%LT,=,%Sx(Brightness))<>%?if(%LT,=,%Sx(Backlight))<>%?if(%LT,=,%Sx(Equalizer))<>%?or(%if(%LT,=,%Sx(Second Line in Player)),%if(%LT,=,%Sx(Status Bar)))<>%?if(%LT,=,%Sx(Scroll Bar))<%?if(%St(scrollbar),=,off)<|%?if(%St(scrollbar),=,left)<|>>>%?if(%LT,=,%Sx(Album Art))<>%?or(%if(%LT,=,%Sx(Display)),%if(%LT,=,%Sx(LCD Settings)))<>%?if(%LT,=,%Sx(Volume Limit))<>%?or(%if(%LT,=,%Sx(Bass)),%if(%LT,=,%Sx(Bass Cutoff)),%if(%LT,=,%Sx(Perceptual Bass Enhancement)))<>%?or(%if(%LT,=,%Sx(Treble)),%if(%LT,=,%Sx(Treble Cutoff)),%if(%LT,=,%Sx(Presence/Treble Attenuation)))<>%?if(%LT,=,%Sx(Balance))<>%?or(%if(%LT,=,%Sx(Channel Configuration)),%if(%LT,=,%Sx(Channels)),%if(%LT,=,%Sx(Mono mode)))<>%?or(%if(%LT,=,%Sx(Stereo Width)),%if(%LT,=,%Sx(Haas Stereo Widening)),%if(%LT,=,%Sx(Upper Bypass Frequency)),%if(%LT,=,%Sx(Lower Bypass Frequency)),%if(%LT,=,%Sx(Process Side Channel Only)),%if(%LT,=,%Sx(Dry/Wet Mix)))<>%?or(%if(%LT,=,%Sx(Crossfeed)),%if(%LT,=,%Sx(Direct Gain)),%if(%LT,=,%Sx(Cross Gain)),%if(%LT,=,%Sx(High-Frequency Attenuation)),%if(%LT,=,%Sx(High-Frequency Cutoff)))<>%?if(%LT,=,%Sx(Dithering))<>%?if(%LT,=,%Sx(Timestretch))<>%?or(%if(%LT,=,%Sx(Dynamic Range Compressor)),%if(%LT,=,%Sx(Threshold)),%if(%LT,=,%Sx(Makeup Gain)),%if(%LT,=,%Sx(Compression Ratio)),%if(%LT,=,%Sx(Knee)),%if(%LT,=,%Sx(Attack Time)),%if(%LT,=,%Sx(Release Time)))<>%?or(%if(%LT,=,%Sx(Enable EQ)),%if(%LT,=,%Sx(Graphical EQ)),%if(%LT,=,%Sx(Precut)),%if(%LT,=,%Sx(Simple EQ Settings)),%if(%LT,=,%Sx(Advanced EQ Settings)),%if(%LT,=,%Sx(Save EQ Preset)),%if(%LT,=,%Sx(Browse EQ Presets)),%if(%LT,=,%Sx(Reset EQ)))<>%?if(%LT,=,%Sx(Play Selected First))<>%?or(%if(%LT,=,%Sx(Fast-Forward/Rewind)),%if(%LT,=,%Sx(FF/RW Min Step)),%if(%LT,=,%Sx(FF/RW Accel)))<>%?if(%LT,=,%Sx(Anti-Skip Buffer))<>%?if(%LT,=,%Sx(Fade on Stop/Pause))<>%?if(%LT,=,%Sx(Single Mode))<>%?if(%LT,=,%Sx(Party Mode))<>%?or(%if(%LT,=,%Sx(Crossfade)),%if(%LT,=,%Sx(Enable Crossfade)),%if(%LT,=,%Sx(Fade-In Delay)),%if(%LT,=,%Sx(Fade-In Duration)),%if(%LT,=,%Sx(Fade-Out Delay)),%if(%LT,=,%Sx(Fade-Out Duration)),%if(%LT,=,%Sx(Fade-Out Mode)))<>%?or(%if(%LT,=,%Sx(Replaygain)),%if(%LT,=,%Sx(Replaygain Type)),%if(%LT,=,%Sx(Prevent Clipping)))<>%?if(%LT,=,%Sx(Track Skip Beep))<>%?or(%if(%LT,=,%Sx(Auto-Change Directory)),%if(%LT,=,%Sx(Constrain Auto-Change)))<>%?if(%LT,=,%Sx(Cuesheet Support))<>%?or(%if(%LT,=,%Sx(Pause on Headphone Unplug)),%if(%LT,=,%Sx(Disable resume on startup if phones unplugged)))<>%?if(%LT,=,%Sx(Headset Remote Control))<>%?or(%if(%LT,=,%Sx(Skip Length)),%if(%LT,=,%Sx(Prevent Track Skipping)))<>%?or(%if(%LT,=,%Sx(Rewind Across Tracks)),%if(%LT,=,%Sx(Rewind Before Resume)),%if(%LT,=,%Sx(Rewind on Pause)))<>%?if(%LT,=,%Sx(Frequency))<>%?if(%LT,=,%Sx(Logging))<>%?or(%if(%LT,=,%Sx(What's Playing Screen)),%if(%LT,=,%Sx(WPS Hotkey)),%if(%LT,=,%Sx(While Playing Screen)))<>%?or(%if(%LT,=,%Sx(Playlists)),%if(%LT,=,%Sx(Sort Playlists)),%if(%LT,=,%Sx(Playlist Viewer Settings)),%if(%LT,=,%Sx(Recursively Insert Directories)),%if(%LT,=,%Sx(Current Playlist)),%if(%LT,=,%Sx(Show Icons)),%if(%LT,=,%Sx(Show Indices)),%if(%LT,=,%Sx(Track Display)),%if(%LT,=,%Sx(Warn When Erasing Dynamic Playlist)),%if(%LT,=,%Sx(Keep Current Track When Replacing Playlist)),%if(%LT,=,%Sx(Show Shuffled Adding Options)),%if(%LT,=,%Sx(Show Queue Options)))<>%?or(%if(%LT,=,%Sx(File View)),%if(%LT,=,%Sx(Sort Case Sensitive)),%if(%LT,=,%Sx(Sort Directories)),%if(%LT,=,%Sx(Sort Files)),%if(%LT,=,%Sx(Interpret numbers when sorting)),%if(%LT,=,%Sx(Show Files)),%if(%LT,=,%Sx(Show Filename Extensions)),%if(%LT,=,%Sx(Follow Playlist)),%if(%LT,=,%Sx(Show Path)),%if(%LT,=,%Sx(Always remember last folder)),%if(%LT,=,%Sx(Start File Browser at /)),%if(%LT,=,%Sx(File Browser Hotkey)))<>%?or(%if(%LT,=,%Sx(System)),%if(%LT,=,%Sx(Battery)),%if(%LT,=,%Sx(Disk)),%if(%LT,=,%Sx(Limits)),%if(%LT,=,%Sx(Volume Adjustment Mode)),%if(%LT,=,%Sx(Number of Volume Steps)),%if(%LT,=,%Sx(Use Shortcuts Menu Instead of Quick Screen)),%if(%LT,=,%Sx(Use Morse Code Input)),%if(%LT,=,%Sx(Car Adapter Mode)),%if(%LT,=,%Sx(Serial Bitrate)),%if(%LT,=,%Sx(Accessory Power Supply)),%if(%LT,=,%Sx(Line Out)),%if(%LT,=,%Sx(Keyclick)),%if(%LT,=,%Sx(USB)),%if(%LT,=,%Sx(Battery Capacity)),%if(%LT,=,%Sx(Charge During USB Connection)),%if(%LT,=,%Sx(Disk Spindown)),%if(%LT,=,%Sx(Directory Cache)),%if(%LT,=,%Sx(Max Entries in File Browser)),%if(%LT,=,%Sx(Max Playlist Size)),%if(%LT,=,%Sx(Glyphs To Cache)),%if(%LT,=,%Sx(Delay Before Resume)),%if(%LT,=,%Sx(Headphone Keyclick)),%if(%LT,=,%Sx(Speaker Keyclick)),%if(%LT,=,%Sx(Keyclick Repeats)),%if(%LT,=,%Sx(USB HID)),%if(%LT,=,%Sx(USB Keypad Mode)),%if(%LT,=,%Sx(USB-DAC)),%if(%LT,=,%Sx(USB Mode)))<>%?or(%if(%LT,=,%Sx(Startup/Shutdown)),%if(%LT,=,%Sx(Show Shutdown Message)),%if(%LT,=,%Sx(Start Screen)),%if(%LT,=,%Sx(Idle Poweroff)),%if(%LT,=,%Sx(Default Sleep Timer Duration)),%if(%LT,=,%Sx(Start Sleep Timer on Boot)),%if(%LT,=,%Sx(Restart Sleep Timer on Keypress)),%if(%LT,=,%Sx(Clear settings when hold switch is on during startup)))<>%?or(%if(%LT,=,%Sx(Automatic Resume)),%if(%LT,=,%Sx(Automatic Track Change Only)))<>%?if(%LT,=,%Sx(Language))<>%?or(%if(%LT,=,%Sx(Load to RAM)),%if(%LT,=,%Sx(Auto Update)),%if(%LT,=,%Sx(Initialize Now)),%if(%LT,=,%Sx(Update Now)),%if(%LT,=,%Sx(Gather Runtime Data)),%if(%LT,=,%Sx(Export Modifications)),%if(%LT,=,%Sx(Import Modifications)),%if(%LT,=,%Sx(Select directories to scan)))<>%?or(%if(%LT,=,%Sx(Backlight on Lock)),%if(%LT,=,%Sx(Caption Backlight)),%if(%LT,=,%Sx(First Buttonpress Enables Backlight Only)),%if(%LT,=,%Sx(Backlight Exemptions)),%if(%LT,=,%Sx(Enabled)),%if(%LT,=,%Sx(Settings)))<>%?or(%if(%LT,=,%Sx(Composite Video Output)),%if(%LT,=,%Sx(Scrolling)),%if(%LT,=,%Sx(Default Codepage)),%if(%LT,=,%Sx(Scroll Speed Setting Example)),%if(%LT,=,%Sx(Scroll Start Delay)),%if(%LT,=,%Sx(Scroll Step Size Setting Example Text)),%if(%LT,=,%Sx(Bidirectional Scroll Limit)),%if(%LT,=,%Sx(Screen Scrolls Out of View)),%if(%LT,=,%Sx(Disable main menu scrolling)),%if(%LT,=,%Sx(Screen Scroll Step Size)),%if(%LT,=,%Sx(Paged Scrolling)),%if(%LT,=,%Sx(List Wraparound)),%if(%LT,=,%Sx(List Order)))<>%?or(%if(%LT,=,%Sx(Peak Meter)),%if(%LT,=,%Sx(Peak Release)),%if(%LT,=,%Sx(Peak Hold Time)),%if(%LT,=,%Sx(Clip Hold Time)),%if(%LT,=,%Sx(Clip Counter)),%if(%LT,=,%Sx(Scale)),%if(%LT,=,%Sx(Minimum of Range)),%if(%LT,=,%Sx(Maximum of Range)))<>%?or(%if(%LT,=,%Sx(Bookmark on Stop)),%if(%LT,=,%Sx(Update on Stop)),%if(%LT,=,%Sx(Load Last Bookmark)),%if(%LT,=,%Sx(Maintain a List of Recent Bookmarks?)))<>%?or(%if(%LT,=,%Sx(Voice Menus)),%if(%LT,=,%Sx(Voice Directories)),%if(%LT,=,%Sx(Use Directory .talk Clips)),%if(%LT,=,%Sx(Voice Filenames)),%if(%LT,=,%Sx(Use File .talk Clips)),%if(%LT,=,%Sx(Say File Type)),%if(%LT,=,%Sx(Announce Battery Level)),%if(%LT,=,%Sx(Voice Prompt Volume)))<>%?if(%LT,=,%Sx(Browse Theme Files))<>%?if(%LT,=,%Sx(Font))<>%?if(%LT,=,%Sx(Recording Screen))<>%?if(%LT,=,%Sx(Base Skin))<>%?if(%LT,=,%Sx(Clear Backdrop))<>%?or(%if(%LT,=,%Sx(Status-/Scrollbar)),%if(%LT,=,%Sx(Scroll Bar Width)))<>%?if(%LT,=,%Sx(Line Selector Type))<>%?if(%LT,=,%Sx(Line Separator))<>%?or(%if(%LT,=,%Sx(Colours)),%if(%LT,=,%Sx(Line Selector Colours)),%if(%LT,=,%Sx(Line Separator Colour)),%if(%LT,=,%Sx(Background Colour)),%if(%LT,=,%Sx(Foreground Colour)),%if(%LT,=,%Sx(Reset Colours)),%if(%LT,=,%Sx(Primary Colour)),%if(%LT,=,%Sx(Secondary Colour)),%if(%LT,=,%Sx(Text Colour)))<>%?if(%LT,=,%Sx(Main Menu))<>%?if(%LT,=,%Sx(Browse .cfg Files))<>%?or(%if(%LT,=,%Sx(Save .cfg File)),%if(%LT,=,%Sx(Save Sound Settings)),%if(%LT,=,%Sx(Save Theme Settings)))<>%?or(%if(%LT,=,%Sx(Format)),%if(%LT,=,%Sx(Encoder Settings)))<>%?if(%LT,=,%Sx(Source))<>%?or(%if(%LT,=,%Sx(File Split Options)),%if(%LT,=,%Sx(Split Measure)),%if(%LT,=,%Sx(What to do when Splitting)),%if(%LT,=,%Sx(Split Time)),%if(%LT,=,%Sx(Split Filesize)))<>%?if(%LT,=,%Sx(Prerecord Time))<>%?if(%LT,=,%Sx(Clear Recording Directory))<>%?if(%LT,=,%Sx(Clipping Light))<>%?if(%LT,=,%Sx(Trigger))<>%?and(%if(%LT,!=,%Sx(Playback Settings)),%if(%LT,!=,%Sx(Sound Settings)),%if(%LT,!=,%Sx(General Settings)),%if(%LT,!=,%Sx(Theme Settings)),%if(%LT,!=,%Sx(Recording Settings)),%if(%LT,!=,%Sx(Voice)),%if(%LT,!=,%Sx(Database)),%if(%LT,!=,%Sx(Bookmarking)),%if(%LT,!=,%Sx(Reset Settings)),%if(%LT,!=,%Sx(Manage Settings)),%if(%LT,!=,%Sx(Shuffle)),%if(%LT,!=,%Sx(Repeat)),%if(%LT,!=,%Sx(Volume)),%if(%LT,!=,%Sx(Brightness)),%if(%LT,!=,%Sx(Backlight)),%if(%LT,!=,%Sx(Equalizer)),%if(%LT,!=,%Sx(Second Line in Player)),%if(%LT,!=,%Sx(Status Bar)),%if(%LT,!=,%Sx(Scroll Bar)),%if(%LT,!=,%Sx(Album Art)),%if(%LT,!=,%Sx(Display)),%if(%LT,!=,%Sx(LCD Settings)),%if(%LT,!=,%Sx(Volume Limit)),%if(%LT,!=,%Sx(Bass)),%if(%LT,!=,%Sx(Bass Cutoff)),%if(%LT,!=,%Sx(Perceptual Bass Enhancement)),%if(%LT,!=,%Sx(Treble)),%if(%LT,!=,%Sx(Treble Cutoff)),%if(%LT,!=,%Sx(Presence/Treble Attenuation)),%if(%LT,!=,%Sx(Balance)),%if(%LT,!=,%Sx(Channel Configuration)),%if(%LT,!=,%Sx(Channels)),%if(%LT,!=,%Sx(Mono mode)),%if(%LT,!=,%Sx(Stereo Width)),%if(%LT,!=,%Sx(Haas Stereo Widening)),%if(%LT,!=,%Sx(Upper Bypass Frequency)),%if(%LT,!=,%Sx(Lower Bypass Frequency)),%if(%LT,!=,%Sx(Process Side Channel Only)),%if(%LT,!=,%Sx(Dry/Wet Mix)),%if(%LT,!=,%Sx(Crossfeed)),%if(%LT,!=,%Sx(Direct Gain)),%if(%LT,!=,%Sx(Cross Gain)),%if(%LT,!=,%Sx(High-Frequency Attenuation)),%if(%LT,!=,%Sx(High-Frequency Cutoff)),%if(%LT,!=,%Sx(Dithering)),%if(%LT,!=,%Sx(Timestretch)),%if(%LT,!=,%Sx(Dynamic Range Compressor)),%if(%LT,!=,%Sx(Threshold)),%if(%LT,!=,%Sx(Makeup Gain)),%if(%LT,!=,%Sx(Compression Ratio)),%if(%LT,!=,%Sx(Knee)),%if(%LT,!=,%Sx(Attack Time)),%if(%LT,!=,%Sx(Release Time)),%if(%LT,!=,%Sx(Enable EQ)),%if(%LT,!=,%Sx(Graphical EQ)),%if(%LT,!=,%Sx(Precut)),%if(%LT,!=,%Sx(Simple EQ Settings)),%if(%LT,!=,%Sx(Advanced EQ Settings)),%if(%LT,!=,%Sx(Save EQ Preset)),%if(%LT,!=,%Sx(Browse EQ Presets)),%if(%LT,!=,%Sx(Reset EQ)),%if(%LT,!=,%Sx(Play Selected First)),%if(%LT,!=,%Sx(Fast-Forward/Rewind)),%if(%LT,!=,%Sx(FF/RW Min Step)),%if(%LT,!=,%Sx(FF/RW Accel)),%if(%LT,!=,%Sx(Anti-Skip Buffer)),%if(%LT,!=,%Sx(Fade on Stop/Pause)),%if(%LT,!=,%Sx(Single Mode)),%if(%LT,!=,%Sx(Party Mode)),%if(%LT,!=,%Sx(Crossfade)),%if(%LT,!=,%Sx(Enable Crossfade)),%if(%LT,!=,%Sx(Fade-In Delay)),%if(%LT,!=,%Sx(Fade-In Duration)),%if(%LT,!=,%Sx(Fade-Out Delay)),%if(%LT,!=,%Sx(Fade-Out Duration)),%if(%LT,!=,%Sx(Fade-Out Mode)),%if(%LT,!=,%Sx(Replaygain)),%if(%LT,!=,%Sx(Replaygain Type)),%if(%LT,!=,%Sx(Prevent Clipping)),%if(%LT,!=,%Sx(Track Skip Beep)),%if(%LT,!=,%Sx(Auto-Change Directory)),%if(%LT,!=,%Sx(Constrain Auto-Change)),%if(%LT,!=,%Sx(Cuesheet Support)),%if(%LT,!=,%Sx(Pause on Headphone Unplug)),%if(%LT,!=,%Sx(Disable resume on startup if phones unplugged)),%if(%LT,!=,%Sx(Headset Remote Control)),%if(%LT,!=,%Sx(Skip Length)),%if(%LT,!=,%Sx(Prevent Track Skipping)),%if(%LT,!=,%Sx(Rewind Across Tracks)),%if(%LT,!=,%Sx(Rewind Before Resume)),%if(%LT,!=,%Sx(Rewind on Pause)),%if(%LT,!=,%Sx(Frequency)),%if(%LT,!=,%Sx(Logging)),%if(%LT,!=,%Sx(What's Playing Screen)),%if(%LT,!=,%Sx(WPS Hotkey)),%if(%LT,!=,%Sx(While Playing Screen)),%if(%LT,!=,%Sx(Playlists)),%if(%LT,!=,%Sx(Sort Playlists)),%if(%LT,!=,%Sx(Playlist Viewer Settings)),%if(%LT,!=,%Sx(Recursively Insert Directories)),%if(%LT,!=,%Sx(Current Playlist)),%if(%LT,!=,%Sx(Show Icons)),%if(%LT,!=,%Sx(Show Indices)),%if(%LT,!=,%Sx(Track Display)),%if(%LT,!=,%Sx(Warn When Erasing Dynamic Playlist)),%if(%LT,!=,%Sx(Keep Current Track When Replacing Playlist)),%if(%LT,!=,%Sx(Show Shuffled Adding Options)),%if(%LT,!=,%Sx(Show Queue Options)),%if(%LT,!=,%Sx(File View)),%if(%LT,!=,%Sx(Sort Case Sensitive)),%if(%LT,!=,%Sx(Sort Directories)),%if(%LT,!=,%Sx(Sort Files)),%if(%LT,!=,%Sx(Interpret numbers when sorting)),%if(%LT,!=,%Sx(Show Files)),%if(%LT,!=,%Sx(Show Filename Extensions)),%if(%LT,!=,%Sx(Follow Playlist)),%if(%LT,!=,%Sx(Show Path)),%if(%LT,!=,%Sx(Always remember last folder)),%if(%LT,!=,%Sx(Start File Browser at /)),%if(%LT,!=,%Sx(File Browser Hotkey)),%if(%LT,!=,%Sx(System)),%if(%LT,!=,%Sx(Battery)),%if(%LT,!=,%Sx(Disk)),%if(%LT,!=,%Sx(Limits)),%if(%LT,!=,%Sx(Volume Adjustment Mode)),%if(%LT,!=,%Sx(Number of Volume Steps)),%if(%LT,!=,%Sx(Use Shortcuts Menu Instead of Quick Screen)),%if(%LT,!=,%Sx(Use Morse Code Input)),%if(%LT,!=,%Sx(Car Adapter Mode)),%if(%LT,!=,%Sx(Serial Bitrate)),%if(%LT,!=,%Sx(Accessory Power Supply)),%if(%LT,!=,%Sx(Line Out)),%if(%LT,!=,%Sx(Keyclick)),%if(%LT,!=,%Sx(USB)),%if(%LT,!=,%Sx(Battery Capacity)),%if(%LT,!=,%Sx(Charge During USB Connection)),%if(%LT,!=,%Sx(Disk Spindown)),%if(%LT,!=,%Sx(Directory Cache)),%if(%LT,!=,%Sx(Max Entries in File Browser)),%if(%LT,!=,%Sx(Max Playlist Size)),%if(%LT,!=,%Sx(Glyphs To Cache)),%if(%LT,!=,%Sx(Delay Before Resume)),%if(%LT,!=,%Sx(Headphone Keyclick)),%if(%LT,!=,%Sx(Speaker Keyclick)),%if(%LT,!=,%Sx(Keyclick Repeats)),%if(%LT,!=,%Sx(USB HID)),%if(%LT,!=,%Sx(USB Keypad Mode)),%if(%LT,!=,%Sx(USB-DAC)),%if(%LT,!=,%Sx(USB Mode)),%if(%LT,!=,%Sx(Startup/Shutdown)),%if(%LT,!=,%Sx(Show Shutdown Message)),%if(%LT,!=,%Sx(Start Screen)),%if(%LT,!=,%Sx(Idle Poweroff)),%if(%LT,!=,%Sx(Default Sleep Timer Duration)),%if(%LT,!=,%Sx(Start Sleep Timer on Boot)),%if(%LT,!=,%Sx(Restart Sleep Timer on Keypress)),%if(%LT,!=,%Sx(Clear settings when hold switch is on during startup)),%if(%LT,!=,%Sx(Automatic Resume)),%if(%LT,!=,%Sx(Automatic Track Change Only)),%if(%LT,!=,%Sx(Language)),%if(%LT,!=,%Sx(Load to RAM)),%if(%LT,!=,%Sx(Auto Update)),%if(%LT,!=,%Sx(Initialize Now)),%if(%LT,!=,%Sx(Update Now)),%if(%LT,!=,%Sx(Gather Runtime Data)),%if(%LT,!=,%Sx(Export Modifications)),%if(%LT,!=,%Sx(Import Modifications)),%if(%LT,!=,%Sx(Select directories to scan)),%if(%LT,!=,%Sx(Backlight on Lock)),%if(%LT,!=,%Sx(Caption Backlight)),%if(%LT,!=,%Sx(First Buttonpress Enables Backlight Only)),%if(%LT,!=,%Sx(Backlight Exemptions)),%if(%LT,!=,%Sx(Enabled)),%if(%LT,!=,%Sx(Settings)),%if(%LT,!=,%Sx(Composite Video Output)),%if(%LT,!=,%Sx(Scrolling)),%if(%LT,!=,%Sx(Default Codepage)),%if(%LT,!=,%Sx(Scroll Speed Setting Example)),%if(%LT,!=,%Sx(Scroll Start Delay)),%if(%LT,!=,%Sx(Scroll Step Size Setting Example Text)),%if(%LT,!=,%Sx(Bidirectional Scroll Limit)),%if(%LT,!=,%Sx(Screen Scrolls Out of View)),%if(%LT,!=,%Sx(Disable main menu scrolling)),%if(%LT,!=,%Sx(Screen Scroll Step Size)),%if(%LT,!=,%Sx(Paged Scrolling)),%if(%LT,!=,%Sx(List Wraparound)),%if(%LT,!=,%Sx(List Order)),%if(%LT,!=,%Sx(Peak Meter)),%if(%LT,!=,%Sx(Peak Release)),%if(%LT,!=,%Sx(Peak Hold Time)),%if(%LT,!=,%Sx(Clip Hold Time)),%if(%LT,!=,%Sx(Clip Counter)),%if(%LT,!=,%Sx(Scale)),%if(%LT,!=,%Sx(Minimum of Range)),%if(%LT,!=,%Sx(Maximum of Range)),%if(%LT,!=,%Sx(Bookmark on Stop)),%if(%LT,!=,%Sx(Update on Stop)),%if(%LT,!=,%Sx(Load Last Bookmark)),%if(%LT,!=,%Sx(Maintain a List of Recent Bookmarks?)),%if(%LT,!=,%Sx(Voice Menus)),%if(%LT,!=,%Sx(Voice Directories)),%if(%LT,!=,%Sx(Use Directory .talk Clips)),%if(%LT,!=,%Sx(Voice Filenames)),%if(%LT,!=,%Sx(Use File .talk Clips)),%if(%LT,!=,%Sx(Say File Type)),%if(%LT,!=,%Sx(Announce Battery Level)),%if(%LT,!=,%Sx(Voice Prompt Volume)),%if(%LT,!=,%Sx(Browse Theme Files)),%if(%LT,!=,%Sx(Font)),%if(%LT,!=,%Sx(Recording Screen)),%if(%LT,!=,%Sx(Base Skin)),%if(%LT,!=,%Sx(Clear Backdrop)),%if(%LT,!=,%Sx(Status-/Scrollbar)),%if(%LT,!=,%Sx(Scroll Bar Width)),%if(%LT,!=,%Sx(Line Selector Type)),%if(%LT,!=,%Sx(Line Separator)),%if(%LT,!=,%Sx(Colours)),%if(%LT,!=,%Sx(Line Selector Colours)),%if(%LT,!=,%Sx(Line Separator Colour)),%if(%LT,!=,%Sx(Background Colour)),%if(%LT,!=,%Sx(Foreground Colour)),%if(%LT,!=,%Sx(Reset Colours)),%if(%LT,!=,%Sx(Primary Colour)),%if(%LT,!=,%Sx(Secondary Colour)),%if(%LT,!=,%Sx(Text Colour)),%if(%LT,!=,%Sx(Main Menu)),%if(%LT,!=,%Sx(Browse .cfg Files)),%if(%LT,!=,%Sx(Save .cfg File)),%if(%LT,!=,%Sx(Save Sound Settings)),%if(%LT,!=,%Sx(Save Theme Settings)),%if(%LT,!=,%Sx(Format)),%if(%LT,!=,%Sx(Encoder Settings)),%if(%LT,!=,%Sx(Source)),%if(%LT,!=,%Sx(File Split Options)),%if(%LT,!=,%Sx(Split Measure)),%if(%LT,!=,%Sx(What to do when Splitting)),%if(%LT,!=,%Sx(Split Time)),%if(%LT,!=,%Sx(Split Filesize)),%if(%LT,!=,%Sx(Prerecord Time)),%if(%LT,!=,%Sx(Clear Recording Directory)),%if(%LT,!=,%Sx(Clipping Light)),%if(%LT,!=,%Sx(Trigger)))<%?if(%Lt,=,%Sx(Crossfeed))<>%?if(%Lt,=,%Sx(Equalizer))<>%?if(%Lt,=,%Sx(Haas Stereo Widening))<>%?if(%Lt,=,%Sx(Dynamic Range Compressor))<>%?if(%Lt,=,%Sx(Fast-Forward/Rewind))<>%?if(%Lt,=,%Sx(Crossfade))<>%?if(%Lt,=,%Sx(Replaygain))<>%?if(%Lt,=,%Sx(Pause on Headphone Unplug))<>%?if(%Lt,=,%Sx(What's Playing Screen))<>%?if(%Lt,=,%Sx(Playlists))<>%?if(%Lt,=,%Sx(Playlist Viewer Settings))<>%?if(%Lt,=,%Sx(Current Playlist))<>%?if(%Lt,=,%Sx(File View))<>%?if(%Lt,=,%Sx(Database))<>%?if(%Lt,=,%Sx(LCD Settings))<>%?if(%Lt,=,%Sx(Backlight Exemptions))<>%?if(%Lt,=,%Sx(Display))<>%?if(%Lt,=,%Sx(Scrolling))<>%?if(%Lt,=,%Sx(Peak Meter))<>%?if(%Lt,=,%Sx(System))<>%?if(%Lt,=,%Sx(Battery))<>%?if(%Lt,=,%Sx(Disk))<>%?if(%Lt,=,%Sx(Limits))<>%?if(%Lt,=,%Sx(Car Adapter Mode))<>%?if(%Lt,=,%Sx(Keyclick))<>%?if(%Lt,=,%Sx(USB))<>%?if(%Lt,=,%Sx(Startup/Shutdown))<>%?if(%Lt,=,%Sx(Bookmarking))<>%?if(%Lt,=,%Sx(Automatic Resume))<>%?if(%Lt,=,%Sx(Voice))<>%?if(%Lt,=,%Sx(Status-/Scrollbar))<>%?if(%Lt,=,%Sx(Colours))<>%?if(%Lt,=,%Sx(Line Selector Colours))<>%?if(%Lt,=,%Sx(File Split Options))<>%?and(%if(%Lt,!=,%Sx(Crossfeed)),%if(%Lt,!=,%Sx(Equalizer)),%if(%Lt,!=,%Sx(Haas Stereo Widening)),%if(%Lt,!=,%Sx(Dynamic Range Compressor)),%if(%Lt,!=,%Sx(Fast-Forward/Rewind)),%if(%Lt,!=,%Sx(Crossfade)),%if(%Lt,!=,%Sx(Replaygain)),%if(%Lt,!=,%Sx(Pause on Headphone Unplug)),%if(%Lt,!=,%Sx(What's Playing Screen)),%if(%Lt,!=,%Sx(Playlists)),%if(%Lt,!=,%Sx(Playlist Viewer Settings)),%if(%Lt,!=,%Sx(Current Playlist)),%if(%Lt,!=,%Sx(File View)),%if(%Lt,!=,%Sx(Database)),%if(%Lt,!=,%Sx(LCD Settings)),%if(%Lt,!=,%Sx(Backlight Exemptions)),%if(%Lt,!=,%Sx(Display)),%if(%Lt,!=,%Sx(Scrolling)),%if(%Lt,!=,%Sx(Peak Meter)),%if(%Lt,!=,%Sx(System)),%if(%Lt,!=,%Sx(Battery)),%if(%Lt,!=,%Sx(Disk)),%if(%Lt,!=,%Sx(Limits)),%if(%Lt,!=,%Sx(Car Adapter Mode)),%if(%Lt,!=,%Sx(Keyclick)),%if(%Lt,!=,%Sx(USB)),%if(%Lt,!=,%Sx(Startup/Shutdown)),%if(%Lt,!=,%Sx(Bookmarking)),%if(%Lt,!=,%Sx(Automatic Resume)),%if(%Lt,!=,%Sx(Voice)),%if(%Lt,!=,%Sx(Status-/Scrollbar)),%if(%Lt,!=,%Sx(Colours)),%if(%Lt,!=,%Sx(Line Selector Colours)),%if(%Lt,!=,%Sx(File Split Options)))<>>
+%Vl(TileSet,165,17,150,20,3)%Vf(ffffff)
+%s%ac%LT
+%Vl(TileSet,165,202,150,16,2)%Vf(ffffff)
+%s%ac%?if(%LT,=,%Sx(Shuffle))<%?ps<%Sx(Random order)|%Sx(In order)>>%?if(%LT,=,%Sx(Repeat))<%?mm<%Sx(Play once)|%Sx(Repeat list)|%Sx(Repeat track)||%Sx(Repeat A-B)>>%?if(%LT,=,%Sx(Volume))<%pv dB>%?if(%LT,=,%Sx(Brightness))<%Sx(Level) %St(brightness)>%?if(%LT,=,%Sx(Backlight))<%Sv(backlight timeout)>%?or(%if(%LT,=,%Sx(Second Line in Player)),%if(%LT,=,%Sx(Status Bar)))<%Sv(statusbar)>%?if(%LT,=,%Sx(Scroll Bar))<%Sv(scrollbar)>%?if(%LT,=,%Sx(Volume Limit))<%LV>%?or(%if(%LT,=,%Sx(Bass)),%if(%LT,=,%Sx(Bass Cutoff)),%if(%LT,=,%Sx(Perceptual Bass Enhancement)))<%LV>%?or(%if(%LT,=,%Sx(Treble)),%if(%LT,=,%Sx(Treble Cutoff)),%if(%LT,=,%Sx(Presence/Treble Attenuation)))<%LV>%?if(%LT,=,%Sx(Balance))<%LV>%?or(%if(%LT,=,%Sx(Channel Configuration)),%if(%LT,=,%Sx(Channels)),%if(%LT,=,%Sx(Mono mode)))<%LV>%?or(%if(%LT,=,%Sx(Stereo Width)),%if(%LT,=,%Sx(Haas Stereo Widening)),%if(%LT,=,%Sx(Upper Bypass Frequency)),%if(%LT,=,%Sx(Lower Bypass Frequency)),%if(%LT,=,%Sx(Process Side Channel Only)),%if(%LT,=,%Sx(Dry/Wet Mix)))<%LV>%?or(%if(%LT,=,%Sx(Crossfeed)),%if(%LT,=,%Sx(Direct Gain)),%if(%LT,=,%Sx(Cross Gain)),%if(%LT,=,%Sx(High-Frequency Attenuation)),%if(%LT,=,%Sx(High-Frequency Cutoff)))<%LV>%?if(%LT,=,%Sx(Dithering))<%LV>%?if(%LT,=,%Sx(Timestretch))<%LV>%?or(%if(%LT,=,%Sx(Dynamic Range Compressor)),%if(%LT,=,%Sx(Threshold)),%if(%LT,=,%Sx(Makeup Gain)),%if(%LT,=,%Sx(Compression Ratio)),%if(%LT,=,%Sx(Knee)),%if(%LT,=,%Sx(Attack Time)),%if(%LT,=,%Sx(Release Time)))<%LV>%?or(%if(%LT,=,%Sx(Enable EQ)),%if(%LT,=,%Sx(Graphical EQ)),%if(%LT,=,%Sx(Precut)),%if(%LT,=,%Sx(Simple EQ Settings)),%if(%LT,=,%Sx(Advanced EQ Settings)),%if(%LT,=,%Sx(Save EQ Preset)),%if(%LT,=,%Sx(Browse EQ Presets)),%if(%LT,=,%Sx(Reset EQ)))<%LV>%?if(%LT,=,%Sx(Play Selected First))<%LV>%?or(%if(%LT,=,%Sx(Fast-Forward/Rewind)),%if(%LT,=,%Sx(FF/RW Min Step)),%if(%LT,=,%Sx(FF/RW Accel)))<%LV>%?if(%LT,=,%Sx(Anti-Skip Buffer))<%LV>%?if(%LT,=,%Sx(Fade on Stop/Pause))<%LV>%?if(%LT,=,%Sx(Single Mode))<%LV>%?if(%LT,=,%Sx(Party Mode))<%LV>%?or(%if(%LT,=,%Sx(Crossfade)),%if(%LT,=,%Sx(Enable Crossfade)),%if(%LT,=,%Sx(Fade-In Delay)),%if(%LT,=,%Sx(Fade-In Duration)),%if(%LT,=,%Sx(Fade-Out Delay)),%if(%LT,=,%Sx(Fade-Out Duration)),%if(%LT,=,%Sx(Fade-Out Mode)))<%LV>%?or(%if(%LT,=,%Sx(Replaygain)),%if(%LT,=,%Sx(Replaygain Type)),%if(%LT,=,%Sx(Prevent Clipping)))<%LV>%?if(%LT,=,%Sx(Track Skip Beep))<%LV>%?or(%if(%LT,=,%Sx(Auto-Change Directory)),%if(%LT,=,%Sx(Constrain Auto-Change)))<%LV>%?if(%LT,=,%Sx(Cuesheet Support))<%LV>%?or(%if(%LT,=,%Sx(Pause on Headphone Unplug)),%if(%LT,=,%Sx(Disable resume on startup if phones unplugged)))<%LV>%?if(%LT,=,%Sx(Headset Remote Control))<%LV>%?or(%if(%LT,=,%Sx(Skip Length)),%if(%LT,=,%Sx(Prevent Track Skipping)))<%LV>%?or(%if(%LT,=,%Sx(Rewind Across Tracks)),%if(%LT,=,%Sx(Rewind Before Resume)),%if(%LT,=,%Sx(Rewind on Pause)))<%LV>%?if(%LT,=,%Sx(Frequency))<%LV>%?if(%LT,=,%Sx(Logging))<%LV>%?or(%if(%LT,=,%Sx(What's Playing Screen)),%if(%LT,=,%Sx(WPS Hotkey)),%if(%LT,=,%Sx(While Playing Screen)))<%LV>%?or(%if(%LT,=,%Sx(Playlists)),%if(%LT,=,%Sx(Sort Playlists)),%if(%LT,=,%Sx(Playlist Viewer Settings)),%if(%LT,=,%Sx(Recursively Insert Directories)),%if(%LT,=,%Sx(Current Playlist)),%if(%LT,=,%Sx(Show Icons)),%if(%LT,=,%Sx(Show Indices)),%if(%LT,=,%Sx(Track Display)),%if(%LT,=,%Sx(Warn When Erasing Dynamic Playlist)),%if(%LT,=,%Sx(Keep Current Track When Replacing Playlist)),%if(%LT,=,%Sx(Show Shuffled Adding Options)),%if(%LT,=,%Sx(Show Queue Options)))<%LV>%?or(%if(%LT,=,%Sx(File View)),%if(%LT,=,%Sx(Sort Case Sensitive)),%if(%LT,=,%Sx(Sort Directories)),%if(%LT,=,%Sx(Sort Files)),%if(%LT,=,%Sx(Interpret numbers when sorting)),%if(%LT,=,%Sx(Show Files)),%if(%LT,=,%Sx(Show Filename Extensions)),%if(%LT,=,%Sx(Follow Playlist)),%if(%LT,=,%Sx(Show Path)),%if(%LT,=,%Sx(Always remember last folder)),%if(%LT,=,%Sx(Start File Browser at /)),%if(%LT,=,%Sx(File Browser Hotkey)))<%LV>%?or(%if(%LT,=,%Sx(System)),%if(%LT,=,%Sx(Battery)),%if(%LT,=,%Sx(Disk)),%if(%LT,=,%Sx(Limits)),%if(%LT,=,%Sx(Volume Adjustment Mode)),%if(%LT,=,%Sx(Number of Volume Steps)),%if(%LT,=,%Sx(Use Shortcuts Menu Instead of Quick Screen)),%if(%LT,=,%Sx(Use Morse Code Input)),%if(%LT,=,%Sx(Car Adapter Mode)),%if(%LT,=,%Sx(Serial Bitrate)),%if(%LT,=,%Sx(Accessory Power Supply)),%if(%LT,=,%Sx(Line Out)),%if(%LT,=,%Sx(Keyclick)),%if(%LT,=,%Sx(USB)),%if(%LT,=,%Sx(Battery Capacity)),%if(%LT,=,%Sx(Charge During USB Connection)),%if(%LT,=,%Sx(Disk Spindown)),%if(%LT,=,%Sx(Directory Cache)),%if(%LT,=,%Sx(Max Entries in File Browser)),%if(%LT,=,%Sx(Max Playlist Size)),%if(%LT,=,%Sx(Glyphs To Cache)),%if(%LT,=,%Sx(Delay Before Resume)),%if(%LT,=,%Sx(Headphone Keyclick)),%if(%LT,=,%Sx(Speaker Keyclick)),%if(%LT,=,%Sx(Keyclick Repeats)),%if(%LT,=,%Sx(USB HID)),%if(%LT,=,%Sx(USB Keypad Mode)),%if(%LT,=,%Sx(USB-DAC)),%if(%LT,=,%Sx(USB Mode)))<%LV>%?or(%if(%LT,=,%Sx(Startup/Shutdown)),%if(%LT,=,%Sx(Show Shutdown Message)),%if(%LT,=,%Sx(Start Screen)),%if(%LT,=,%Sx(Idle Poweroff)),%if(%LT,=,%Sx(Default Sleep Timer Duration)),%if(%LT,=,%Sx(Start Sleep Timer on Boot)),%if(%LT,=,%Sx(Restart Sleep Timer on Keypress)),%if(%LT,=,%Sx(Clear settings when hold switch is on during startup)))<%LV>%?or(%if(%LT,=,%Sx(Automatic Resume)),%if(%LT,=,%Sx(Automatic Track Change Only)))<%LV>%?if(%LT,=,%Sx(Language))<%LV>%?or(%if(%LT,=,%Sx(Load to RAM)),%if(%LT,=,%Sx(Auto Update)),%if(%LT,=,%Sx(Initialize Now)),%if(%LT,=,%Sx(Update Now)),%if(%LT,=,%Sx(Gather Runtime Data)),%if(%LT,=,%Sx(Export Modifications)),%if(%LT,=,%Sx(Import Modifications)),%if(%LT,=,%Sx(Select directories to scan)))<%LV>%?or(%if(%LT,=,%Sx(Backlight on Lock)),%if(%LT,=,%Sx(Caption Backlight)),%if(%LT,=,%Sx(First Buttonpress Enables Backlight Only)),%if(%LT,=,%Sx(Backlight Exemptions)),%if(%LT,=,%Sx(Enabled)),%if(%LT,=,%Sx(Settings)))<%LV>%?or(%if(%LT,=,%Sx(Composite Video Output)),%if(%LT,=,%Sx(Scrolling)),%if(%LT,=,%Sx(Default Codepage)),%if(%LT,=,%Sx(Scroll Speed Setting Example)),%if(%LT,=,%Sx(Scroll Start Delay)),%if(%LT,=,%Sx(Scroll Step Size Setting Example Text)),%if(%LT,=,%Sx(Bidirectional Scroll Limit)),%if(%LT,=,%Sx(Screen Scrolls Out of View)),%if(%LT,=,%Sx(Disable main menu scrolling)),%if(%LT,=,%Sx(Screen Scroll Step Size)),%if(%LT,=,%Sx(Paged Scrolling)),%if(%LT,=,%Sx(List Wraparound)),%if(%LT,=,%Sx(List Order)))<%LV>%?or(%if(%LT,=,%Sx(Peak Meter)),%if(%LT,=,%Sx(Peak Release)),%if(%LT,=,%Sx(Peak Hold Time)),%if(%LT,=,%Sx(Clip Hold Time)),%if(%LT,=,%Sx(Clip Counter)),%if(%LT,=,%Sx(Scale)),%if(%LT,=,%Sx(Minimum of Range)),%if(%LT,=,%Sx(Maximum of Range)))<%LV>%?or(%if(%LT,=,%Sx(Bookmark on Stop)),%if(%LT,=,%Sx(Update on Stop)),%if(%LT,=,%Sx(Load Last Bookmark)),%if(%LT,=,%Sx(Maintain a List of Recent Bookmarks?)))<%LV>%?or(%if(%LT,=,%Sx(Voice Menus)),%if(%LT,=,%Sx(Voice Directories)),%if(%LT,=,%Sx(Use Directory .talk Clips)),%if(%LT,=,%Sx(Voice Filenames)),%if(%LT,=,%Sx(Use File .talk Clips)),%if(%LT,=,%Sx(Say File Type)),%if(%LT,=,%Sx(Announce Battery Level)),%if(%LT,=,%Sx(Voice Prompt Volume)))<%LV>%?if(%LT,=,%Sx(Browse Theme Files))<%LV>%?if(%LT,=,%Sx(Font))<%LV>%?if(%LT,=,%Sx(Recording Screen))<%LV>%?if(%LT,=,%Sx(Base Skin))<%LV>%?if(%LT,=,%Sx(Clear Backdrop))<%LV>%?or(%if(%LT,=,%Sx(Status-/Scrollbar)),%if(%LT,=,%Sx(Scroll Bar Width)))<%LV>%?if(%LT,=,%Sx(Line Selector Type))<%LV>%?if(%LT,=,%Sx(Line Separator))<%LV>%?or(%if(%LT,=,%Sx(Colours)),%if(%LT,=,%Sx(Line Selector Colours)),%if(%LT,=,%Sx(Line Separator Colour)),%if(%LT,=,%Sx(Background Colour)),%if(%LT,=,%Sx(Foreground Colour)),%if(%LT,=,%Sx(Reset Colours)),%if(%LT,=,%Sx(Primary Colour)),%if(%LT,=,%Sx(Secondary Colour)),%if(%LT,=,%Sx(Text Colour)))<%LV>%?if(%LT,=,%Sx(Main Menu))<%LV>%?if(%LT,=,%Sx(Browse .cfg Files))<%LV>%?or(%if(%LT,=,%Sx(Save .cfg File)),%if(%LT,=,%Sx(Save Sound Settings)),%if(%LT,=,%Sx(Save Theme Settings)))<%LV>%?or(%if(%LT,=,%Sx(Format)),%if(%LT,=,%Sx(Encoder Settings)))<%LV>%?if(%LT,=,%Sx(Source))<%LV>%?or(%if(%LT,=,%Sx(File Split Options)),%if(%LT,=,%Sx(Split Measure)),%if(%LT,=,%Sx(What to do when Splitting)),%if(%LT,=,%Sx(Split Time)),%if(%LT,=,%Sx(Split Filesize)))<%LV>%?if(%LT,=,%Sx(Prerecord Time))<%LV>%?if(%LT,=,%Sx(Clear Recording Directory))<%LV>%?if(%LT,=,%Sx(Clipping Light))<%LV>%?if(%LT,=,%Sx(Trigger))<%LV>
+%Vl(Cal,190,77,100,16,2)%Vf(ffffff)
+%ac%cD(month)
+%Vl(Cal,190,107,100,46,6)%Vf(0e1016)
+%ac%cd
+%Vl(Cal,165,17,150,20,3)%Vf(ffffff)
+%s%ac%LT
+%Vl(Cal,165,207,150,20,3)%Vf(ffffff)
+%ac%cD(short)
+#--- album art corners: default cover as preview ---#
+%Vl(TileArt,165,17,150,20,3)%Vf(ffffff)
+%s%ac%LT
+%Vl(TileArt,165,202,150,16,2)%Vf(ffffff)
+%s%ac%?if(%St(volume display),=,graphic)<%Sx(Rounded)|%Sx(Square)>
+%Vl(TileArtOpt,165,17,150,20,3)%Vf(ffffff)
+%s%ac%Lt
+%Vl(TileArtOpt,165,202,150,16,2)%Vf(ffffff)
+%s%ac%LT
+#--- key lock: preview from the design board as a picture ---#
+%Vl(TileLock,165,17,150,20,3)%Vf(ffffff)
+%s%ac%LT
+%Vl(TileLock,165,202,150,16,2)%Vf(ffffff)
+%s%ac%?if(%St(battery display),=,graphic)<%Sx(Lock Screen)|%Sx(Normal)>
+%Vl(TileLockOpt,165,17,150,20,3)%Vf(ffffff)
+%s%ac%LT
+%Vl(TileLockOpt,165,202,150,16,2)%Vf(ffffff)
+%s%ac%?or(%if(%LT,=,%Sx(Normal)),%if(%LT,=,%Sx(Numeric)))<%Sx(Screen unchanged)|%Sx(Clock and title)>
+#--- option pages ---#
+%Vl(TileOpt,201,79,78,113,7)%Vf(dfe6f3)
+%al%?if(%Lt,=,%Sx(Playback Settings))<>%?if(%Lt,=,%Sx(Sound Settings))<>%?if(%Lt,=,%Sx(General Settings))<>%?if(%Lt,=,%Sx(Theme Settings))<>%?if(%Lt,=,%Sx(Recording Settings))<>%?if(%Lt,=,%Sx(Voice))<>%?if(%Lt,=,%Sx(Database))<>%?if(%Lt,=,%Sx(Bookmarking))<>%?or(%if(%Lt,=,%Sx(Reset Settings)),%if(%Lt,=,%Sx(Manage Settings)))<>%?if(%Lt,=,%Sx(Shuffle))<%?or(%if(%LT,=,%Sx(On)),%if(%LT,=,%Sx(Yes)))<|>>%?if(%Lt,=,%Sx(Repeat))<%?if(%LT,=,%Sx(Off))<|%?if(%LT,=,%Sx(One))<|>>>%?if(%Lt,=,%Sx(Volume))<>%?if(%Lt,=,%Sx(Brightness))<>%?if(%Lt,=,%Sx(Backlight))<>%?if(%Lt,=,%Sx(Equalizer))<>%?or(%if(%Lt,=,%Sx(Second Line in Player)),%if(%Lt,=,%Sx(Status Bar)))<>%?if(%Lt,=,%Sx(Scroll Bar))<%?if(%LT,=,%Sx(Off))<|%?if(%LT,=,%Sx(Left))<|>>>%?if(%Lt,=,%Sx(Album Art))<>%?or(%if(%Lt,=,%Sx(Display)),%if(%Lt,=,%Sx(LCD Settings)))<>%?if(%Lt,=,%Sx(Volume Limit))<>%?or(%if(%Lt,=,%Sx(Bass)),%if(%Lt,=,%Sx(Bass Cutoff)),%if(%Lt,=,%Sx(Perceptual Bass Enhancement)))<>%?or(%if(%Lt,=,%Sx(Treble)),%if(%Lt,=,%Sx(Treble Cutoff)),%if(%Lt,=,%Sx(Presence/Treble Attenuation)))<>%?if(%Lt,=,%Sx(Balance))<>%?or(%if(%Lt,=,%Sx(Channel Configuration)),%if(%Lt,=,%Sx(Channels)),%if(%Lt,=,%Sx(Mono mode)))<>%?or(%if(%Lt,=,%Sx(Stereo Width)),%if(%Lt,=,%Sx(Haas Stereo Widening)),%if(%Lt,=,%Sx(Upper Bypass Frequency)),%if(%Lt,=,%Sx(Lower Bypass Frequency)),%if(%Lt,=,%Sx(Process Side Channel Only)),%if(%Lt,=,%Sx(Dry/Wet Mix)))<>%?or(%if(%Lt,=,%Sx(Crossfeed)),%if(%Lt,=,%Sx(Direct Gain)),%if(%Lt,=,%Sx(Cross Gain)),%if(%Lt,=,%Sx(High-Frequency Attenuation)),%if(%Lt,=,%Sx(High-Frequency Cutoff)))<>%?if(%Lt,=,%Sx(Dithering))<>%?if(%Lt,=,%Sx(Timestretch))<>%?or(%if(%Lt,=,%Sx(Dynamic Range Compressor)),%if(%Lt,=,%Sx(Threshold)),%if(%Lt,=,%Sx(Makeup Gain)),%if(%Lt,=,%Sx(Compression Ratio)),%if(%Lt,=,%Sx(Knee)),%if(%Lt,=,%Sx(Attack Time)),%if(%Lt,=,%Sx(Release Time)))<>%?or(%if(%Lt,=,%Sx(Enable EQ)),%if(%Lt,=,%Sx(Graphical EQ)),%if(%Lt,=,%Sx(Precut)),%if(%Lt,=,%Sx(Simple EQ Settings)),%if(%Lt,=,%Sx(Advanced EQ Settings)),%if(%Lt,=,%Sx(Save EQ Preset)),%if(%Lt,=,%Sx(Browse EQ Presets)),%if(%Lt,=,%Sx(Reset EQ)))<>%?if(%Lt,=,%Sx(Play Selected First))<>%?or(%if(%Lt,=,%Sx(Fast-Forward/Rewind)),%if(%Lt,=,%Sx(FF/RW Min Step)),%if(%Lt,=,%Sx(FF/RW Accel)))<>%?if(%Lt,=,%Sx(Anti-Skip Buffer))<>%?if(%Lt,=,%Sx(Fade on Stop/Pause))<>%?if(%Lt,=,%Sx(Single Mode))<>%?if(%Lt,=,%Sx(Party Mode))<>%?or(%if(%Lt,=,%Sx(Crossfade)),%if(%Lt,=,%Sx(Enable Crossfade)),%if(%Lt,=,%Sx(Fade-In Delay)),%if(%Lt,=,%Sx(Fade-In Duration)),%if(%Lt,=,%Sx(Fade-Out Delay)),%if(%Lt,=,%Sx(Fade-Out Duration)),%if(%Lt,=,%Sx(Fade-Out Mode)))<>%?or(%if(%Lt,=,%Sx(Replaygain)),%if(%Lt,=,%Sx(Replaygain Type)),%if(%Lt,=,%Sx(Prevent Clipping)))<>%?if(%Lt,=,%Sx(Track Skip Beep))<>%?or(%if(%Lt,=,%Sx(Auto-Change Directory)),%if(%Lt,=,%Sx(Constrain Auto-Change)))<>%?if(%Lt,=,%Sx(Cuesheet Support))<>%?or(%if(%Lt,=,%Sx(Pause on Headphone Unplug)),%if(%Lt,=,%Sx(Disable resume on startup if phones unplugged)))<>%?if(%Lt,=,%Sx(Headset Remote Control))<>%?or(%if(%Lt,=,%Sx(Skip Length)),%if(%Lt,=,%Sx(Prevent Track Skipping)))<>%?or(%if(%Lt,=,%Sx(Rewind Across Tracks)),%if(%Lt,=,%Sx(Rewind Before Resume)),%if(%Lt,=,%Sx(Rewind on Pause)))<>%?if(%Lt,=,%Sx(Frequency))<>%?if(%Lt,=,%Sx(Logging))<>%?or(%if(%Lt,=,%Sx(What's Playing Screen)),%if(%Lt,=,%Sx(WPS Hotkey)),%if(%Lt,=,%Sx(While Playing Screen)))<>%?or(%if(%Lt,=,%Sx(Playlists)),%if(%Lt,=,%Sx(Sort Playlists)),%if(%Lt,=,%Sx(Playlist Viewer Settings)),%if(%Lt,=,%Sx(Recursively Insert Directories)),%if(%Lt,=,%Sx(Current Playlist)),%if(%Lt,=,%Sx(Show Icons)),%if(%Lt,=,%Sx(Show Indices)),%if(%Lt,=,%Sx(Track Display)),%if(%Lt,=,%Sx(Warn When Erasing Dynamic Playlist)),%if(%Lt,=,%Sx(Keep Current Track When Replacing Playlist)),%if(%Lt,=,%Sx(Show Shuffled Adding Options)),%if(%Lt,=,%Sx(Show Queue Options)))<>%?or(%if(%Lt,=,%Sx(File View)),%if(%Lt,=,%Sx(Sort Case Sensitive)),%if(%Lt,=,%Sx(Sort Directories)),%if(%Lt,=,%Sx(Sort Files)),%if(%Lt,=,%Sx(Interpret numbers when sorting)),%if(%Lt,=,%Sx(Show Files)),%if(%Lt,=,%Sx(Show Filename Extensions)),%if(%Lt,=,%Sx(Follow Playlist)),%if(%Lt,=,%Sx(Show Path)),%if(%Lt,=,%Sx(Always remember last folder)),%if(%Lt,=,%Sx(Start File Browser at /)),%if(%Lt,=,%Sx(File Browser Hotkey)))<>%?or(%if(%Lt,=,%Sx(System)),%if(%Lt,=,%Sx(Battery)),%if(%Lt,=,%Sx(Disk)),%if(%Lt,=,%Sx(Limits)),%if(%Lt,=,%Sx(Volume Adjustment Mode)),%if(%Lt,=,%Sx(Number of Volume Steps)),%if(%Lt,=,%Sx(Use Shortcuts Menu Instead of Quick Screen)),%if(%Lt,=,%Sx(Use Morse Code Input)),%if(%Lt,=,%Sx(Car Adapter Mode)),%if(%Lt,=,%Sx(Serial Bitrate)),%if(%Lt,=,%Sx(Accessory Power Supply)),%if(%Lt,=,%Sx(Line Out)),%if(%Lt,=,%Sx(Keyclick)),%if(%Lt,=,%Sx(USB)),%if(%Lt,=,%Sx(Battery Capacity)),%if(%Lt,=,%Sx(Charge During USB Connection)),%if(%Lt,=,%Sx(Disk Spindown)),%if(%Lt,=,%Sx(Directory Cache)),%if(%Lt,=,%Sx(Max Entries in File Browser)),%if(%Lt,=,%Sx(Max Playlist Size)),%if(%Lt,=,%Sx(Glyphs To Cache)),%if(%Lt,=,%Sx(Delay Before Resume)),%if(%Lt,=,%Sx(Headphone Keyclick)),%if(%Lt,=,%Sx(Speaker Keyclick)),%if(%Lt,=,%Sx(Keyclick Repeats)),%if(%Lt,=,%Sx(USB HID)),%if(%Lt,=,%Sx(USB Keypad Mode)),%if(%Lt,=,%Sx(USB-DAC)),%if(%Lt,=,%Sx(USB Mode)))<>%?or(%if(%Lt,=,%Sx(Startup/Shutdown)),%if(%Lt,=,%Sx(Show Shutdown Message)),%if(%Lt,=,%Sx(Start Screen)),%if(%Lt,=,%Sx(Idle Poweroff)),%if(%Lt,=,%Sx(Default Sleep Timer Duration)),%if(%Lt,=,%Sx(Start Sleep Timer on Boot)),%if(%Lt,=,%Sx(Restart Sleep Timer on Keypress)),%if(%Lt,=,%Sx(Clear settings when hold switch is on during startup)))<>%?or(%if(%Lt,=,%Sx(Automatic Resume)),%if(%Lt,=,%Sx(Automatic Track Change Only)))<>%?if(%Lt,=,%Sx(Language))<>%?or(%if(%Lt,=,%Sx(Load to RAM)),%if(%Lt,=,%Sx(Auto Update)),%if(%Lt,=,%Sx(Initialize Now)),%if(%Lt,=,%Sx(Update Now)),%if(%Lt,=,%Sx(Gather Runtime Data)),%if(%Lt,=,%Sx(Export Modifications)),%if(%Lt,=,%Sx(Import Modifications)),%if(%Lt,=,%Sx(Select directories to scan)))<>%?or(%if(%Lt,=,%Sx(Backlight on Lock)),%if(%Lt,=,%Sx(Caption Backlight)),%if(%Lt,=,%Sx(First Buttonpress Enables Backlight Only)),%if(%Lt,=,%Sx(Backlight Exemptions)),%if(%Lt,=,%Sx(Enabled)),%if(%Lt,=,%Sx(Settings)))<>%?or(%if(%Lt,=,%Sx(Composite Video Output)),%if(%Lt,=,%Sx(Scrolling)),%if(%Lt,=,%Sx(Default Codepage)),%if(%Lt,=,%Sx(Scroll Speed Setting Example)),%if(%Lt,=,%Sx(Scroll Start Delay)),%if(%Lt,=,%Sx(Scroll Step Size Setting Example Text)),%if(%Lt,=,%Sx(Bidirectional Scroll Limit)),%if(%Lt,=,%Sx(Screen Scrolls Out of View)),%if(%Lt,=,%Sx(Disable main menu scrolling)),%if(%Lt,=,%Sx(Screen Scroll Step Size)),%if(%Lt,=,%Sx(Paged Scrolling)),%if(%Lt,=,%Sx(List Wraparound)),%if(%Lt,=,%Sx(List Order)))<>%?or(%if(%Lt,=,%Sx(Peak Meter)),%if(%Lt,=,%Sx(Peak Release)),%if(%Lt,=,%Sx(Peak Hold Time)),%if(%Lt,=,%Sx(Clip Hold Time)),%if(%Lt,=,%Sx(Clip Counter)),%if(%Lt,=,%Sx(Scale)),%if(%Lt,=,%Sx(Minimum of Range)),%if(%Lt,=,%Sx(Maximum of Range)))<>%?or(%if(%Lt,=,%Sx(Bookmark on Stop)),%if(%Lt,=,%Sx(Update on Stop)),%if(%Lt,=,%Sx(Load Last Bookmark)),%if(%Lt,=,%Sx(Maintain a List of Recent Bookmarks?)))<>%?or(%if(%Lt,=,%Sx(Voice Menus)),%if(%Lt,=,%Sx(Voice Directories)),%if(%Lt,=,%Sx(Use Directory .talk Clips)),%if(%Lt,=,%Sx(Voice Filenames)),%if(%Lt,=,%Sx(Use File .talk Clips)),%if(%Lt,=,%Sx(Say File Type)),%if(%Lt,=,%Sx(Announce Battery Level)),%if(%Lt,=,%Sx(Voice Prompt Volume)))<>%?if(%Lt,=,%Sx(Browse Theme Files))<>%?if(%Lt,=,%Sx(Font))<>%?if(%Lt,=,%Sx(Recording Screen))<>%?if(%Lt,=,%Sx(Base Skin))<>%?if(%Lt,=,%Sx(Clear Backdrop))<>%?or(%if(%Lt,=,%Sx(Status-/Scrollbar)),%if(%Lt,=,%Sx(Scroll Bar Width)))<>%?if(%Lt,=,%Sx(Line Selector Type))<>%?if(%Lt,=,%Sx(Line Separator))<>%?or(%if(%Lt,=,%Sx(Colours)),%if(%Lt,=,%Sx(Line Selector Colours)),%if(%Lt,=,%Sx(Line Separator Colour)),%if(%Lt,=,%Sx(Background Colour)),%if(%Lt,=,%Sx(Foreground Colour)),%if(%Lt,=,%Sx(Reset Colours)),%if(%Lt,=,%Sx(Primary Colour)),%if(%Lt,=,%Sx(Secondary Colour)),%if(%Lt,=,%Sx(Text Colour)))<>%?if(%Lt,=,%Sx(Main Menu))<>%?if(%Lt,=,%Sx(Browse .cfg Files))<>%?or(%if(%Lt,=,%Sx(Save .cfg File)),%if(%Lt,=,%Sx(Save Sound Settings)),%if(%Lt,=,%Sx(Save Theme Settings)))<>%?or(%if(%Lt,=,%Sx(Format)),%if(%Lt,=,%Sx(Encoder Settings)))<>%?if(%Lt,=,%Sx(Source))<>%?or(%if(%Lt,=,%Sx(File Split Options)),%if(%Lt,=,%Sx(Split Measure)),%if(%Lt,=,%Sx(What to do when Splitting)),%if(%Lt,=,%Sx(Split Time)),%if(%Lt,=,%Sx(Split Filesize)))<>%?if(%Lt,=,%Sx(Prerecord Time))<>%?if(%Lt,=,%Sx(Clear Recording Directory))<>%?if(%Lt,=,%Sx(Clipping Light))<>%?if(%Lt,=,%Sx(Trigger))<>%?and(%if(%Lt,!=,%Sx(Playback Settings)),%if(%Lt,!=,%Sx(Sound Settings)),%if(%Lt,!=,%Sx(General Settings)),%if(%Lt,!=,%Sx(Theme Settings)),%if(%Lt,!=,%Sx(Recording Settings)),%if(%Lt,!=,%Sx(Voice)),%if(%Lt,!=,%Sx(Database)),%if(%Lt,!=,%Sx(Bookmarking)),%if(%Lt,!=,%Sx(Reset Settings)),%if(%Lt,!=,%Sx(Manage Settings)),%if(%Lt,!=,%Sx(Shuffle)),%if(%Lt,!=,%Sx(Repeat)),%if(%Lt,!=,%Sx(Volume)),%if(%Lt,!=,%Sx(Brightness)),%if(%Lt,!=,%Sx(Backlight)),%if(%Lt,!=,%Sx(Equalizer)),%if(%Lt,!=,%Sx(Second Line in Player)),%if(%Lt,!=,%Sx(Status Bar)),%if(%Lt,!=,%Sx(Scroll Bar)),%if(%Lt,!=,%Sx(Album Art)),%if(%Lt,!=,%Sx(Display)),%if(%Lt,!=,%Sx(LCD Settings)),%if(%Lt,!=,%Sx(Volume Limit)),%if(%Lt,!=,%Sx(Bass)),%if(%Lt,!=,%Sx(Bass Cutoff)),%if(%Lt,!=,%Sx(Perceptual Bass Enhancement)),%if(%Lt,!=,%Sx(Treble)),%if(%Lt,!=,%Sx(Treble Cutoff)),%if(%Lt,!=,%Sx(Presence/Treble Attenuation)),%if(%Lt,!=,%Sx(Balance)),%if(%Lt,!=,%Sx(Channel Configuration)),%if(%Lt,!=,%Sx(Channels)),%if(%Lt,!=,%Sx(Mono mode)),%if(%Lt,!=,%Sx(Stereo Width)),%if(%Lt,!=,%Sx(Haas Stereo Widening)),%if(%Lt,!=,%Sx(Upper Bypass Frequency)),%if(%Lt,!=,%Sx(Lower Bypass Frequency)),%if(%Lt,!=,%Sx(Process Side Channel Only)),%if(%Lt,!=,%Sx(Dry/Wet Mix)),%if(%Lt,!=,%Sx(Crossfeed)),%if(%Lt,!=,%Sx(Direct Gain)),%if(%Lt,!=,%Sx(Cross Gain)),%if(%Lt,!=,%Sx(High-Frequency Attenuation)),%if(%Lt,!=,%Sx(High-Frequency Cutoff)),%if(%Lt,!=,%Sx(Dithering)),%if(%Lt,!=,%Sx(Timestretch)),%if(%Lt,!=,%Sx(Dynamic Range Compressor)),%if(%Lt,!=,%Sx(Threshold)),%if(%Lt,!=,%Sx(Makeup Gain)),%if(%Lt,!=,%Sx(Compression Ratio)),%if(%Lt,!=,%Sx(Knee)),%if(%Lt,!=,%Sx(Attack Time)),%if(%Lt,!=,%Sx(Release Time)),%if(%Lt,!=,%Sx(Enable EQ)),%if(%Lt,!=,%Sx(Graphical EQ)),%if(%Lt,!=,%Sx(Precut)),%if(%Lt,!=,%Sx(Simple EQ Settings)),%if(%Lt,!=,%Sx(Advanced EQ Settings)),%if(%Lt,!=,%Sx(Save EQ Preset)),%if(%Lt,!=,%Sx(Browse EQ Presets)),%if(%Lt,!=,%Sx(Reset EQ)),%if(%Lt,!=,%Sx(Play Selected First)),%if(%Lt,!=,%Sx(Fast-Forward/Rewind)),%if(%Lt,!=,%Sx(FF/RW Min Step)),%if(%Lt,!=,%Sx(FF/RW Accel)),%if(%Lt,!=,%Sx(Anti-Skip Buffer)),%if(%Lt,!=,%Sx(Fade on Stop/Pause)),%if(%Lt,!=,%Sx(Single Mode)),%if(%Lt,!=,%Sx(Party Mode)),%if(%Lt,!=,%Sx(Crossfade)),%if(%Lt,!=,%Sx(Enable Crossfade)),%if(%Lt,!=,%Sx(Fade-In Delay)),%if(%Lt,!=,%Sx(Fade-In Duration)),%if(%Lt,!=,%Sx(Fade-Out Delay)),%if(%Lt,!=,%Sx(Fade-Out Duration)),%if(%Lt,!=,%Sx(Fade-Out Mode)),%if(%Lt,!=,%Sx(Replaygain)),%if(%Lt,!=,%Sx(Replaygain Type)),%if(%Lt,!=,%Sx(Prevent Clipping)),%if(%Lt,!=,%Sx(Track Skip Beep)),%if(%Lt,!=,%Sx(Auto-Change Directory)),%if(%Lt,!=,%Sx(Constrain Auto-Change)),%if(%Lt,!=,%Sx(Cuesheet Support)),%if(%Lt,!=,%Sx(Pause on Headphone Unplug)),%if(%Lt,!=,%Sx(Disable resume on startup if phones unplugged)),%if(%Lt,!=,%Sx(Headset Remote Control)),%if(%Lt,!=,%Sx(Skip Length)),%if(%Lt,!=,%Sx(Prevent Track Skipping)),%if(%Lt,!=,%Sx(Rewind Across Tracks)),%if(%Lt,!=,%Sx(Rewind Before Resume)),%if(%Lt,!=,%Sx(Rewind on Pause)),%if(%Lt,!=,%Sx(Frequency)),%if(%Lt,!=,%Sx(Logging)),%if(%Lt,!=,%Sx(What's Playing Screen)),%if(%Lt,!=,%Sx(WPS Hotkey)),%if(%Lt,!=,%Sx(While Playing Screen)),%if(%Lt,!=,%Sx(Playlists)),%if(%Lt,!=,%Sx(Sort Playlists)),%if(%Lt,!=,%Sx(Playlist Viewer Settings)),%if(%Lt,!=,%Sx(Recursively Insert Directories)),%if(%Lt,!=,%Sx(Current Playlist)),%if(%Lt,!=,%Sx(Show Icons)),%if(%Lt,!=,%Sx(Show Indices)),%if(%Lt,!=,%Sx(Track Display)),%if(%Lt,!=,%Sx(Warn When Erasing Dynamic Playlist)),%if(%Lt,!=,%Sx(Keep Current Track When Replacing Playlist)),%if(%Lt,!=,%Sx(Show Shuffled Adding Options)),%if(%Lt,!=,%Sx(Show Queue Options)),%if(%Lt,!=,%Sx(File View)),%if(%Lt,!=,%Sx(Sort Case Sensitive)),%if(%Lt,!=,%Sx(Sort Directories)),%if(%Lt,!=,%Sx(Sort Files)),%if(%Lt,!=,%Sx(Interpret numbers when sorting)),%if(%Lt,!=,%Sx(Show Files)),%if(%Lt,!=,%Sx(Show Filename Extensions)),%if(%Lt,!=,%Sx(Follow Playlist)),%if(%Lt,!=,%Sx(Show Path)),%if(%Lt,!=,%Sx(Always remember last folder)),%if(%Lt,!=,%Sx(Start File Browser at /)),%if(%Lt,!=,%Sx(File Browser Hotkey)),%if(%Lt,!=,%Sx(System)),%if(%Lt,!=,%Sx(Battery)),%if(%Lt,!=,%Sx(Disk)),%if(%Lt,!=,%Sx(Limits)),%if(%Lt,!=,%Sx(Volume Adjustment Mode)),%if(%Lt,!=,%Sx(Number of Volume Steps)),%if(%Lt,!=,%Sx(Use Shortcuts Menu Instead of Quick Screen)),%if(%Lt,!=,%Sx(Use Morse Code Input)),%if(%Lt,!=,%Sx(Car Adapter Mode)),%if(%Lt,!=,%Sx(Serial Bitrate)),%if(%Lt,!=,%Sx(Accessory Power Supply)),%if(%Lt,!=,%Sx(Line Out)),%if(%Lt,!=,%Sx(Keyclick)),%if(%Lt,!=,%Sx(USB)),%if(%Lt,!=,%Sx(Battery Capacity)),%if(%Lt,!=,%Sx(Charge During USB Connection)),%if(%Lt,!=,%Sx(Disk Spindown)),%if(%Lt,!=,%Sx(Directory Cache)),%if(%Lt,!=,%Sx(Max Entries in File Browser)),%if(%Lt,!=,%Sx(Max Playlist Size)),%if(%Lt,!=,%Sx(Glyphs To Cache)),%if(%Lt,!=,%Sx(Delay Before Resume)),%if(%Lt,!=,%Sx(Headphone Keyclick)),%if(%Lt,!=,%Sx(Speaker Keyclick)),%if(%Lt,!=,%Sx(Keyclick Repeats)),%if(%Lt,!=,%Sx(USB HID)),%if(%Lt,!=,%Sx(USB Keypad Mode)),%if(%Lt,!=,%Sx(USB-DAC)),%if(%Lt,!=,%Sx(USB Mode)),%if(%Lt,!=,%Sx(Startup/Shutdown)),%if(%Lt,!=,%Sx(Show Shutdown Message)),%if(%Lt,!=,%Sx(Start Screen)),%if(%Lt,!=,%Sx(Idle Poweroff)),%if(%Lt,!=,%Sx(Default Sleep Timer Duration)),%if(%Lt,!=,%Sx(Start Sleep Timer on Boot)),%if(%Lt,!=,%Sx(Restart Sleep Timer on Keypress)),%if(%Lt,!=,%Sx(Clear settings when hold switch is on during startup)),%if(%Lt,!=,%Sx(Automatic Resume)),%if(%Lt,!=,%Sx(Automatic Track Change Only)),%if(%Lt,!=,%Sx(Language)),%if(%Lt,!=,%Sx(Load to RAM)),%if(%Lt,!=,%Sx(Auto Update)),%if(%Lt,!=,%Sx(Initialize Now)),%if(%Lt,!=,%Sx(Update Now)),%if(%Lt,!=,%Sx(Gather Runtime Data)),%if(%Lt,!=,%Sx(Export Modifications)),%if(%Lt,!=,%Sx(Import Modifications)),%if(%Lt,!=,%Sx(Select directories to scan)),%if(%Lt,!=,%Sx(Backlight on Lock)),%if(%Lt,!=,%Sx(Caption Backlight)),%if(%Lt,!=,%Sx(First Buttonpress Enables Backlight Only)),%if(%Lt,!=,%Sx(Backlight Exemptions)),%if(%Lt,!=,%Sx(Enabled)),%if(%Lt,!=,%Sx(Settings)),%if(%Lt,!=,%Sx(Composite Video Output)),%if(%Lt,!=,%Sx(Scrolling)),%if(%Lt,!=,%Sx(Default Codepage)),%if(%Lt,!=,%Sx(Scroll Speed Setting Example)),%if(%Lt,!=,%Sx(Scroll Start Delay)),%if(%Lt,!=,%Sx(Scroll Step Size Setting Example Text)),%if(%Lt,!=,%Sx(Bidirectional Scroll Limit)),%if(%Lt,!=,%Sx(Screen Scrolls Out of View)),%if(%Lt,!=,%Sx(Disable main menu scrolling)),%if(%Lt,!=,%Sx(Screen Scroll Step Size)),%if(%Lt,!=,%Sx(Paged Scrolling)),%if(%Lt,!=,%Sx(List Wraparound)),%if(%Lt,!=,%Sx(List Order)),%if(%Lt,!=,%Sx(Peak Meter)),%if(%Lt,!=,%Sx(Peak Release)),%if(%Lt,!=,%Sx(Peak Hold Time)),%if(%Lt,!=,%Sx(Clip Hold Time)),%if(%Lt,!=,%Sx(Clip Counter)),%if(%Lt,!=,%Sx(Scale)),%if(%Lt,!=,%Sx(Minimum of Range)),%if(%Lt,!=,%Sx(Maximum of Range)),%if(%Lt,!=,%Sx(Bookmark on Stop)),%if(%Lt,!=,%Sx(Update on Stop)),%if(%Lt,!=,%Sx(Load Last Bookmark)),%if(%Lt,!=,%Sx(Maintain a List of Recent Bookmarks?)),%if(%Lt,!=,%Sx(Voice Menus)),%if(%Lt,!=,%Sx(Voice Directories)),%if(%Lt,!=,%Sx(Use Directory .talk Clips)),%if(%Lt,!=,%Sx(Voice Filenames)),%if(%Lt,!=,%Sx(Use File .talk Clips)),%if(%Lt,!=,%Sx(Say File Type)),%if(%Lt,!=,%Sx(Announce Battery Level)),%if(%Lt,!=,%Sx(Voice Prompt Volume)),%if(%Lt,!=,%Sx(Browse Theme Files)),%if(%Lt,!=,%Sx(Font)),%if(%Lt,!=,%Sx(Recording Screen)),%if(%Lt,!=,%Sx(Base Skin)),%if(%Lt,!=,%Sx(Clear Backdrop)),%if(%Lt,!=,%Sx(Status-/Scrollbar)),%if(%Lt,!=,%Sx(Scroll Bar Width)),%if(%Lt,!=,%Sx(Line Selector Type)),%if(%Lt,!=,%Sx(Line Separator)),%if(%Lt,!=,%Sx(Colours)),%if(%Lt,!=,%Sx(Line Selector Colours)),%if(%Lt,!=,%Sx(Line Separator Colour)),%if(%Lt,!=,%Sx(Background Colour)),%if(%Lt,!=,%Sx(Foreground Colour)),%if(%Lt,!=,%Sx(Reset Colours)),%if(%Lt,!=,%Sx(Primary Colour)),%if(%Lt,!=,%Sx(Secondary Colour)),%if(%Lt,!=,%Sx(Text Colour)),%if(%Lt,!=,%Sx(Main Menu)),%if(%Lt,!=,%Sx(Browse .cfg Files)),%if(%Lt,!=,%Sx(Save .cfg File)),%if(%Lt,!=,%Sx(Save Sound Settings)),%if(%Lt,!=,%Sx(Save Theme Settings)),%if(%Lt,!=,%Sx(Format)),%if(%Lt,!=,%Sx(Encoder Settings)),%if(%Lt,!=,%Sx(Source)),%if(%Lt,!=,%Sx(File Split Options)),%if(%Lt,!=,%Sx(Split Measure)),%if(%Lt,!=,%Sx(What to do when Splitting)),%if(%Lt,!=,%Sx(Split Time)),%if(%Lt,!=,%Sx(Split Filesize)),%if(%Lt,!=,%Sx(Prerecord Time)),%if(%Lt,!=,%Sx(Clear Recording Directory)),%if(%Lt,!=,%Sx(Clipping Light)),%if(%Lt,!=,%Sx(Trigger)))<>
+%Vl(TileOpt,165,17,150,20,3)%Vf(ffffff)
+%s%ac%Lt
+%Vl(TileOpt,165,202,150,16,2)%Vf(ffffff)
+%s%ac%LT
+#--- System: logo tile in the backdrop (SideSys), name and version below it ---#
+%Vl(TileSys,165,151,150,20,3)%Vf(ffffff)
+%s%acGlossy Slate
+%Vl(TileSys,165,173,150,16,2)%Vf(dce6f2)
+%s%ac%Sx(Version) 1.0
+#--- USB mode: connected (%cs = 21) ---#
+%Vl(Usb,10,35,300,20,3)%Vf(ffffff)
+%ac%Sx(Connected)
+%Vl(Usb,110,60,100,100,-)%xd(UsbLogo,1)
+%Vl(Usb,10,190,300,16,2)%Vf(ffffff)
+%ac%Sx(Do not disconnect.)
+%Vl(Usb,10,208,300,14,4)%Vf(dce6f2)
+%ac%Sx(Eject on the computer before disconnecting.)
+#--- USB mode: ejected by the computer (%cs = 22) ---#
+%Vl(UsbAus,10,35,300,20,3)%Vf(ffffff)
+%ac%Sx(Ejected)
+%Vl(UsbAus,110,60,100,100,-)%xd(UsbLogo,2)
+%Vl(UsbAus,10,190,300,16,2)%Vf(ffffff)
+%ac%Sx(The cable can now be disconnected.)
+%Vl(UsbAus,10,208,300,14,4)%Vf(dce6f2)
+%ac%Sx(Rockbox is ready again after disconnecting.)
+#--- quick menu (%cs = 10) ---#
+%Vl(QsTop,25,22,18,9,-)
+%xd(QsMini,%bl)
+%Vl(QsTop,47,18,40,16,2)%Vf(2e3644)
+%al%bl%%
+%Vl(QsTop,126,18,42,16,2)%Vf(2e3644)
+%s%al%?bs<%bs|%Sx(Off)>
+%Vl(QsLock,178,20,10,12,-)%xd(QsLockI)
+%Vl(QsMain,40,78,5,9,-)%xd(QsFillL)
+%Vl(QsMain,45,78,205,9,-)
+%pv(0,0,205,9,qs_fill_r.bmp,slider,QsCap)
+%Vl(QsMain,260,74,46,16,10)%Vf(2e3644)
+%ar%pv dB
+%Vl(QsMain,40,114,5,9,-)%xd(QsFillL)
+%Vl(QsMain,45,114,205,9,-)
+%St(0,0,205,9,qs_fill_r.bmp,slider,QsCap,setting,brightness)
+%Vl(QsMain,260,110,46,16,10)%Vf(2e3644)
+%ar%Sx(Level) %St(brightness)
+%Vl(QsLeftOn,13,148,142,68,9)%VB%Vb(e6e9ee)%xd(QsSw,2)%xd(QsShuf,2)%xd(QsArrL,1)
+%Vl(QsLeftOn,14,167,140,24,1)%Vf(ffffff)
+%s%ac%Sx(Shuffle@quickmenu)
+%Vl(QsLeftOn,14,187,140,14,4)%Vf(e4ecf8)
+%s%ac%Sx(On)
+%Vl(QsLeftOff,13,148,142,68,9)%VB%Vb(e6e9ee)%xd(QsSw,1)%xd(QsShuf,1)%xd(QsArrL,2)
+%Vl(QsLeftOff,14,167,140,24,1)%Vf(2e3644)
+%s%ac%Sx(Shuffle@quickmenu)
+%Vl(QsLeftOff,14,187,140,14,4)%Vf(5b6371)
+%s%ac%Sx(Off)
+%Vl(QsRightOn,165,148,142,68,9)%VB%Vb(e6e9ee)%xd(QsSw,2)%xd(QsRep,2)%xd(QsArrR,3)
+%Vl(QsRightOn,166,167,140,24,1)%Vf(ffffff)
+%s%ac%Sx(Repeat@quickmenu)
+%Vl(QsRightOn,166,187,140,14,4)%Vf(e4ecf8)
+%s%ac%?mm<%Sx(Off)|%Sx(All)|%Sx(One)||%Sx(A-B)>
+%Vl(QsRightOne,165,148,142,68,9)%VB%Vb(e6e9ee)%xd(QsSw,2)%xd(QsRep,3)%xd(QsArrR,3)
+%Vl(QsRightOne,166,167,140,24,1)%Vf(ffffff)
+%s%ac%Sx(Repeat@quickmenu)
+%Vl(QsRightOne,166,187,140,14,4)%Vf(e4ecf8)
+%s%ac%?mm<%Sx(Off)|%Sx(All)|%Sx(One)||%Sx(A-B)>
+%Vl(QsRightOff,165,148,142,68,9)%VB%Vb(e6e9ee)%xd(QsSw,1)%xd(QsRep,1)%xd(QsArrR,4)
+%Vl(QsRightOff,166,167,140,24,1)%Vf(2e3644)
+%s%ac%Sx(Repeat@quickmenu)
+%Vl(QsRightOff,166,187,140,14,4)%Vf(5b6371)
+%s%ac%?mm<%Sx(Off)|%Sx(All)|%Sx(One)||%Sx(A-B)>
+%Vl(QsNever,0,0,1,1,9)
+%QT

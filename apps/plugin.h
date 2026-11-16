@@ -180,7 +180,10 @@ int plugin_open(const char *plugin, const char *parameter);
  * when this happens please take the opportunity to sort in
  * any new functions "waiting" at the end of the list.
  */
-#define PLUGIN_API_VERSION 286
+#define PLUGIN_API_VERSION 288
+
+/* 287: playlist_catalog_dir removed from struct user_settings (fork, iPod 6G) */
+/* 288: font_load_ex() at the end (fork, iPod 6G: tempo screen) */
 
 /* 239 Marks the removal of ARCHOS HWCODEC and CHARCELL */
 
@@ -1060,6 +1063,9 @@ struct plugin_api {
     /* new stuff at the end, sort into place next time
        the API gets incompatible */
     void (*settings_apply)(bool read_disk);
+    /* load a font with the buffer a skin gives it (glyphs to cache): a font
+     * the skin has loaded already is shared, not loaded again bigger */
+    int (*font_load_ex)(const char *path, size_t buffer_size, int glyphs);
 };
 
 /* plugin header */

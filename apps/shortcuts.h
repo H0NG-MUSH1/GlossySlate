@@ -41,6 +41,10 @@ enum shortcut_type {
 
 void shortcuts_add(enum shortcut_type type, const char* value);
 void shortcuts_init(void);
+#ifdef IPOD_6G
+/* entries of "Shortcuts", for the main menu sidebar (%Mc(shortcuts)) */
+int shortcuts_get_count(void);
+#endif
 int do_shortcut_menu(void*ignored);
 
 #endif

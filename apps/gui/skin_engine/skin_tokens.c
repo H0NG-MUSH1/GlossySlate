@@ -944,6 +944,89 @@ static const char* NOINLINE get_lif_token_value(struct gui_wps *gwps,
     return NULL;
 }
 
+#if CONFIG_RTC
+/* Upper case for the month names of %cD(month): ASCII and the Latin-1
+ * letters (UTF-8 C3 A0..BE, without the division sign), enough for the
+ * short month names of the Latin script languages. */
+static void locale_upcase(char *s)
+{
+    for (unsigned char *p = (unsigned char *)s; *p; p++)
+    {
+        if (*p >= 'a' && *p <= 'z')
+            *p -= 'a' - 'A';
+        else if (*p == 0xc3 && p[1] >= 0xa0 && p[1] <= 0xbe && p[1] != 0xb7)
+            *++p -= 0x20;
+    }
+}
+
+/* %cD: the date in the words and the order of the language. The formats
+ * LANG_DATE_FORMAT_LONG and _SHORT name the parts in braces; anything else
+ * is copied. Unknown names are copied as they are. */
+static const char *locale_date(int kind, const struct tm *tm,
+                               char *buf, int buf_size)
+{
+    static const struct { char name[8]; unsigned char part; } parts[] = {
+        { "weekday", 0 }, { "wd", 1 }, { "day", 2 },
+        { "month", 3 }, { "mon", 4 }, { "year", 5 },
+    };
+    const char *fmt;
+    char *out = buf, *end = buf + buf_size - 1;
+
+    if (buf_size <= 0)
+        return NULL;
+    switch (kind)
+    {
+        case SKIN_DATE_WEEKDAY:
+            return str(LANG_WEEKDAY_FULL_SUNDAY + tm->tm_wday);
+        case SKIN_DATE_MONTH:
+            strmemccpy(buf, str(LANG_MONTH_JANUARY + tm->tm_mon), buf_size);
+            locale_upcase(buf);
+            return buf;
+        case SKIN_DATE_LONG:
+            fmt = str(LANG_DATE_FORMAT_LONG);
+            break;
+        default:
+            fmt = str(LANG_DATE_FORMAT_SHORT);
+            break;
+    }
+
+    while (*fmt && out < end)
+    {
+        const char *close = (*fmt == '{') ? strchr(fmt, '}') : NULL;
+        const char *text = NULL;
+        char num[8];
+        int i;
+
+        for (i = 0; close && i < (int)ARRAYLEN(parts); i++)
+        {
+            size_t len = strlen(parts[i].name);
+            if ((size_t)(close - fmt - 1) == len &&
+                !memcmp(fmt + 1, parts[i].name, len))
+                break;
+        }
+        if (!close || i == (int)ARRAYLEN(parts))
+        {
+            *out++ = *fmt++;
+            continue;
+        }
+        switch (parts[i].part)
+        {
+            case 0: text = str(LANG_WEEKDAY_FULL_SUNDAY + tm->tm_wday); break;
+            case 1: text = str(LANG_WEEKDAY_SUNDAY + tm->tm_wday); break;
+            case 2: snprintf(num, sizeof(num), "%d", tm->tm_mday); text = num; break;
+            case 3: text = str(LANG_MONTH_FULL_JANUARY + tm->tm_mon); break;
+            case 4: text = str(LANG_MONTH_JANUARY + tm->tm_mon); break;
+            default: snprintf(num, sizeof(num), "%d", tm->tm_year + 1900); text = num; break;
+        }
+        while (*text && out < end)
+            *out++ = *text++;
+        fmt = close + 1;
+    }
+    *out = '\0';
+    return buf;
+}
+#endif /* CONFIG_RTC */
+
 /* RTC tokens go here */
 static const char* get_rtc_token_value(struct wps_token *token,
                                                 char *buf, int buf_size,
@@ -1064,6 +1147,10 @@ static const char* get_rtc_token_value(struct wps_token *token,
             snprintf(buf, buf_size, "%1d", tm->tm_wday);
             numeric_ret = tm->tm_wday + 1;
             break;
+
+        case SKIN_TOKEN_RTC_LOCALE_DATE:
+            /* D: date in the words and order of the language */
+            return locale_date(token->value.i, tm, buf, buf_size);
         } /* switch */
 
         if (intval)
@@ -1098,6 +1185,7 @@ static const char* get_rtc_token_value(struct wps_token *token,
             return "----";
         case SKIN_TOKEN_RTC_WEEKDAY_NAME:
         case SKIN_TOKEN_RTC_MONTH_NAME:
+        case SKIN_TOKEN_RTC_LOCALE_DATE:
             return "---";
         case SKIN_TOKEN_RTC_DAY_OF_WEEK_START_MON:
         case SKIN_TOKEN_RTC_DAY_OF_WEEK_START_SUN:
@@ -1292,8 +1380,21 @@ const char *get_token_value(struct gui_wps *gwps,
             return (char*)SKINOFFSETTOPTR(get_skin_buffer(data), token->value.data);
 
         case SKIN_TOKEN_TRANSLATEDSTRING:
-            return token->value.i < LANG_LAST_INDEX_IN_ARRAY ?
-                                   (char*)P2STR(ID2P(token->value.i)) : "<ERR>";
+        {
+            const char *text, *place;
+            if (token->value.i >= LANG_LAST_INDEX_IN_ARRAY)
+                return "<ERR>";
+            text = P2STR(ID2P(token->value.i));
+            /* fork: a theme phrase can name the place it is used in its
+             * English key ("Shuffle@quickmenu"), so that it can be translated
+             * apart from a phrase with the same English text. Only the text
+             * before '@' is shown; translations usually have no '@'. */
+            place = strchr(text, '@');
+            if (!place)
+                return (char*)text;
+            strmemccpy(buf, text, MIN(buf_size, place - text + 1));
+            return buf;
+        }
 
         case SKIN_TOKEN_PLAYLIST_ENTRIES:
             numeric_ret = playlist_amount();
@@ -1330,6 +1431,32 @@ const char *get_token_value(struct gui_wps *gwps,
             goto gtv_ret_numeric_tag_info;
         case SKIN_TOKEN_LIST_ITEM_IS_SELECTED:
             return skinlist_is_selected_item()?"s":"";
+        case SKIN_TOKEN_LIST_ITEM_VALUE:
+#ifdef IPOD_6G
+        {
+            struct listitem *li = (struct listitem *)SKINOFFSETTOPTR(get_skin_buffer(data), token->value.data);
+            if (!li) return NULL;
+            return skinlist_get_item_value(li->offset, li->wrap, buf, buf_size);
+        }
+#else
+            return NULL;
+#endif
+        case SKIN_TOKEN_LIST_ITEM_OPENS:
+#ifdef IPOD_6G
+            return skinlist_item_opens()?"o":"";
+#else
+            return NULL;
+#endif
+        case SKIN_TOKEN_MEDIA_COUNT:
+        {
+            /* the number as text, empty while it is not known yet (the
+             * database still loading); no intval, so %if() compares the
+             * number and %?Mc(...) only asks whether it is known */
+            int count = root_menu_media_count(token->value.i);
+            if (count < 0)
+                return NULL;
+            return itoa_buf(buf, buf_size, count);
+        }
         case SKIN_TOKEN_LIST_ITEM_ICON:
         {
             struct listitem *li = (struct listitem *)SKINOFFSETTOPTR(get_skin_buffer(data), token->value.data);
@@ -1541,10 +1668,19 @@ const char *get_token_value(struct gui_wps *gwps,
         }
 
         case SKIN_TOKEN_REPEAT_MODE:
-            itoa_buf(buf, buf_size, global_settings.repeat_mode);
-            numeric_ret = global_settings.repeat_mode + 1;
+        {
+            /* Rockbox's values, so that skins keep working: 0 off, 1 all,
+             * 2 one, 4 A-B. 3 (repeat shuffled) does not occur in the fork. */
+            int mode = global_settings.repeat_mode;
+#ifdef AB_REPEAT_ENABLE
+            if (mode == REPEAT_AB)
+                mode = 4;
+#endif
+            itoa_buf(buf, buf_size, mode);
+            numeric_ret = mode + 1;
             numeric_buf = buf;
             goto gtv_ret_numeric_tag_info;
+        }
 
         case SKIN_TOKEN_RTC_PRESENT:
 #if CONFIG_RTC
@@ -1758,6 +1894,18 @@ const char *get_token_value(struct gui_wps *gwps,
             cfg_to_string(s, buf, buf_size);
             numeric_buf = buf;
             goto gtv_ret_numeric_tag_info;
+        }
+        case SKIN_TOKEN_SETTING_VALUE:
+        {
+            /* %Sv(name): the value as the setting's option list shows it
+             * ("10 s", "Immer an", "Nur Album"); empty for text settings */
+            const struct settings_list *s = token->value.xdata;
+            int type = s ? (s->flags & F_T_MASK) : 0;
+            if (type != F_T_INT && type != F_T_UINT && type != F_T_BOOL)
+                return NULL;
+            int value = type == F_T_BOOL ? (*(bool *)s->setting ? 1 : 0)
+                                         : *(int *)s->setting;
+            return option_get_valuestring(s, buf, buf_size, value);
         }
         case SKIN_TOKEN_HAVE_TUNER:
 #if CONFIG_TUNER

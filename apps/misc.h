@@ -215,7 +215,11 @@ enum current_activity {
     ACTIVITY_BOOKMARKSLIST,
     ACTIVITY_SHORTCUTSMENU,
     ACTIVITY_ID3SCREEN,
-    ACTIVITY_USBSCREEN
+    ACTIVITY_USBSCREEN,
+#ifdef IPOD_6G
+    /* USB screen after the host ejected the drive (skin: %cs = 22) */
+    ACTIVITY_USBEJECTED,
+#endif
 };
 
 /* custom string representation of activity */

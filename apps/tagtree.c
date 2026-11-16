@@ -34,6 +34,7 @@
 #include "splash.h"
 #include "icons.h"
 #include "tree.h"
+#include "bookmark.h"
 #include "action.h"
 #include "settings.h"
 #include "tagcache.h"
@@ -397,6 +398,7 @@ static int get_tag(int *tag)
         TAG_MATCH("autoscore", tag_virt_autoscore) \
         TAG_MATCH("lastplayed", tag_lastplayed) \
         TAG_MATCH("lastoffset", tag_lastoffset) \
+        TAG_MATCH("mediatype", tag_virt_mediatype) \
         TAG_MATCH("%root_menu", var_rootmenu) \
         TAG_MATCH("albumartist", tag_albumartist) \
         TAG_MATCH("lastelapsed", tag_lastelapsed) \
@@ -940,9 +942,11 @@ static void tagtree_buffer_event(unsigned short id, void *ev_data)
     bool runtimedb = global_settings.runtimedb;
     bool autoresume = global_settings.autoresume_enable;
 
+#ifndef IPOD_6G
     /* Do not gather data unless proper setting has been enabled. */
     if (!runtimedb && !autoresume)
         return;
+#endif
 
     logf("be:%s", id3->path);
 
@@ -954,6 +958,13 @@ static void tagtree_buffer_event(unsigned short id, void *ev_data)
         logf("tc stat: not found: %s", id3->path);
         return;
     }
+#ifdef IPOD_6G
+    /* The index is looked up always: lists mark the playing track by it,
+     * and podcasts and audiobooks count their plays whatever the settings
+     * (see tagtree_track_finish_event()) */
+    if (tagcache_get_numeric(&tcs, tag_virt_mediatype) > TAGCACHE_MEDIA_MUSIC)
+        runtimedb = true;
+#endif
 
     if (runtimedb)
     {
@@ -1011,6 +1022,12 @@ static void tagtree_track_finish_event(unsigned short id, void *ev_data)
     bool auto_skip = te->flags & TEF_AUTO_SKIP;
     bool runtimedb = global_settings.runtimedb;
     bool autoresume = global_settings.autoresume_enable;
+#ifdef IPOD_6G
+    /* Podcasts and audiobooks always count their plays: a play count above
+     * 0 marks them heard (tagcache_entry_heard()) */
+    if (tagcache_entry_media(tagcache_idx) > TAGCACHE_MEDIA_MUSIC)
+        runtimedb = true;
+#endif
 
     /* Don't process unplayed tracks, or tracks interrupted within the
        first 15 seconds but always process autoresume point */
@@ -1065,6 +1082,11 @@ static void tagtree_track_finish_event(unsigned short id, void *ev_data)
         tagcache_update_numeric(tagcache_idx, tag_playcount, playcount);
         tagcache_update_numeric(tagcache_idx, tag_playtime, playtime);
         tagcache_update_numeric(tagcache_idx, tag_lastplayed, lastplayed);
+#ifdef IPOD_6G
+        /* written now, so the list drops the "unheard" dot at once */
+        if (tagcache_entry_media(tagcache_idx) > TAGCACHE_MEDIA_MUSIC)
+            tagcache_flush_numeric();
+#endif
     }
 
     if (autoresume)
@@ -1472,6 +1494,9 @@ static bool tagnavi_loaded;
 void tagtree_init(void)
 {
     tagnavi_loaded = initialize_tagtree();
+#ifdef IPOD_6G
+    albumart_list_init();
+#endif
 }
 
 bool tagtree_ready(void)
@@ -1590,6 +1615,27 @@ static void tcs_get_basename(struct tagcache_search *tcs, bool is_basename)
     }
 }
 
+#ifdef IPOD_6G
+static bool retrieve_album_subtitle(struct tagcache_search *tcs, int tag,
+                                    char *buf, long size)
+{
+    if (tag == tag_album)
+    {
+        /* The album search supplies a matching track even though unique
+         * album tag entries do not store one themselves. */
+        if (tcs->idx_id < 0)
+            return false;
+        bool found = tagcache_retrieve(tcs, tcs->idx_id,
+                                       tag_albumartist, buf, size);
+        if (!found || !buf[0] || !strcmp(buf, UNTAGGED))
+            found = tagcache_retrieve(tcs, tcs->idx_id,
+                                      tag_artist, buf, size);
+        return found && buf[0] && strcmp(buf, UNTAGGED);
+    }
+    return tagcache_retrieve(tcs, tcs->idx_id, tag_album, buf, size);
+}
+#endif
+
 static int retrieve_entries(struct tree_context *c, int offset, bool init)
 {
     logf( "%s", __func__);
@@ -1644,6 +1690,10 @@ static int retrieve_entries(struct tree_context *c, int offset, bool init)
 
     /* Prevent duplicate entries in the search list. */
     tagcache_search_set_uniqbuf(&tcs, uniqbuf, UNIQBUF_SIZE);
+#ifdef IPOD_6G
+    if (tag == tag_album)
+        tagcache_search_track_index(&tcs);
+#endif
 
     if (level || is_basename|| csi->clause_count[0] || TAGCACHE_IS_NUMERIC(tag))
         sort = true;
@@ -1717,7 +1767,13 @@ static int retrieve_entries(struct tree_context *c, int offset, bool init)
     tree_lock_cache(c);
     struct tagentry *dptr = core_get_data(c->cache.entries_handle);
 
-    if (tag != tag_title && tag != tag_filename)
+    /* Podcasts and audiobooks list their albums only, without the entries
+     * for all tracks and random (docs/ipod6g-database-media-types.md) */
+    if (tag != tag_title && tag != tag_filename
+#ifdef IPOD_6G
+        && tagcache_search_get_media(&tcs) == TAGCACHE_MEDIA_MUSIC
+#endif
+        )
     {
         bool show_album_sorted = (tag == tag_album);
         int show_album_sorted_offset = (show_album_sorted ? 1 : 0);
@@ -1808,7 +1864,11 @@ static int retrieve_entries(struct tree_context *c, int offset, bool init)
                     namebufused += strlen(dptr->name)+1;
                     dptr->album_name = core_get_data(c->cache.name_buffer_handle)+namebufused;
                     if ((c->cache.name_buffer_size - namebufused) > 0 &&
+#ifdef IPOD_6G
+                        retrieve_album_subtitle(&tcs, tag, dptr->album_name,
+#else
                         tagcache_retrieve(&tcs, tcs.idx_id, tag_album, dptr->album_name,
+#endif
                                     c->cache.name_buffer_size - namebufused))
                         namebufused += strlen(dptr->album_name)+1;
                     else
@@ -1839,7 +1899,11 @@ static int retrieve_entries(struct tree_context *c, int offset, bool init)
                     namebufused += strlen(dptr->name)+1; /* include NULL */
                     dptr->album_name = core_get_data(c->cache.name_buffer_handle)+namebufused;
                     if ((c->cache.name_buffer_size - namebufused) > 0 &&
+#ifdef IPOD_6G
+                            retrieve_album_subtitle(&tcs, tag, dptr->album_name,
+#else
                             tagcache_retrieve(&tcs, tcs.idx_id, tag_album, dptr->album_name,
+#endif
                                       c->cache.name_buffer_size - namebufused))
                         namebufused += strlen(dptr->album_name)+1;
                     else
@@ -1870,7 +1934,12 @@ static int retrieve_entries(struct tree_context *c, int offset, bool init)
                 if (!buffer_full)
                 {
                     dptr->album_name = core_get_data(c->cache.name_buffer_handle)+namebufused;
-                    if (tagcache_retrieve(&tcs, tcs.idx_id, tag_album, dptr->album_name,
+                    if (
+#ifdef IPOD_6G
+                        retrieve_album_subtitle(&tcs, tag, dptr->album_name,
+#else
+                        tagcache_retrieve(&tcs, tcs.idx_id, tag_album, dptr->album_name,
+#endif
                                       c->cache.name_buffer_size - namebufused))
                         namebufused += strlen(dptr->album_name)+1;
                     else
@@ -1984,10 +2053,22 @@ entry_skip_formatter:
 
 }
 
+#ifdef IPOD_6G
+/* An item that loads a menu nothing defines, e.g. "Custom menu" without a
+ * /.rockbox/tagnavi_custom.config: it would open an empty list, so it is
+ * left out */
+static bool root_item_hidden(const struct menu_root *m, int item)
+{
+    const struct menu_entry *e = m->items[item];
+    return e->type == menu_load && e->link >= 0 && e->link < menu_count &&
+           menus[e->link] && menus[e->link]->itemcount == 0;
+}
+#endif
+
 static int load_root(struct tree_context *c)
 {
     struct tagentry *dptr = core_get_data(c->cache.entries_handle);
-    int i;
+    int i, shown = 0;
 
     tc = c;
     c->currtable = TABLE_ROOT;
@@ -2003,6 +2084,10 @@ static int load_root(struct tree_context *c)
 
     for (i = 0; i < menu->itemcount; i++)
     {
+#ifdef IPOD_6G
+        if (root_item_hidden(menu, i))
+            continue;
+#endif
 
         dptr->name = (char*)menu->items[i]->name;
 
@@ -2037,12 +2122,13 @@ static int load_root(struct tree_context *c)
         }
 
         dptr++;
+        shown++;
     }
 
     current_offset = 0;
-    current_entry_count = i;
+    current_entry_count = shown;
 
-    return i;
+    return shown;
 }
 
 int tagtree_load(struct tree_context* c)
@@ -2740,10 +2826,50 @@ int tagtree_add_to_playlist(const char* playlist, bool new_playlist)
     return tagtree_insert_selection(0, false, playlist, new_playlist) ? 0 : -1;
 }
 
+#ifdef IPOD_6G
+/* Podcasts and audiobooks play as the folder of the selected track, like
+ * the file browser would play it: bookmark.c only bookmarks playlists of a
+ * folder or playlist file, not those made from the database. So stopping
+ * them creates or updates their bookmark (one per podcast or audiobook,
+ * see add_bookmark()), and the track of the bookmark continues where it
+ * stopped (bookmark_play_media_folder()). The path is the one of the
+ * database, with its volume, so playing tracks are found in it again. */
+static bool play_media_folder(struct tree_context *c, int index)
+{
+    struct tagentry *entry = tagtree_get_entry(c, index);
+    char path[MAX_PATH];
+
+    if (!entry || entry->newtable != TABLE_PLAYTRACK ||
+        tagcache_entry_media(entry->extraseek) <= TAGCACHE_MEDIA_MUSIC)
+        return false;
+
+    struct tagcache_search tcs;
+    if (!tagcache_search(&tcs, tag_filename))
+        return false;
+    bool found = tagcache_retrieve(&tcs, entry->extraseek, tag_filename,
+                                   path, sizeof(path));
+    tagcache_search_finish(&tcs);
+
+    char *slash = found ? strrchr(path, '/') : NULL;
+    if (!slash || slash == path)
+        return false;
+    *slash = '\0';
+    return bookmark_play_media_folder(path, slash + 1);
+}
+#endif
+
 static int tagtree_play_folder(struct tree_context* c)
 {
     logf( "%s", __func__);
     int start_index = c->selected_item;
+
+#ifdef IPOD_6G
+    if (play_media_folder(c, start_index))
+    {
+        loaded_entries_crc = tagtree_data_crc(c); /* save crc in case we return */
+        return 0;
+    }
+#endif
 
     if (playlist_create(NULL, NULL) < 0)
     {
@@ -2822,6 +2948,296 @@ char* tagtree_get_entry_name(struct tree_context *c, int id,
     strmemccpy(buf, entry->name, bufsize);
     return buf;
 }
+
+#ifdef IPOD_6G
+bool tagtree_album_art_key(struct tree_context *c, int id,
+                           struct albumart_list_key *key)
+{
+    if (c->currtable != TABLE_NAVIBROWSE ||
+        csi->tagorder[c->currextra] != tag_album ||
+        id < c->special_entry_count)
+        return false;
+
+    struct tagentry *entry = tagtree_get_entry(c, id);
+    if (!entry || entry->extraseek < 0)
+        return false;
+
+    key->album_seek = entry->extraseek;
+    key->parent_tag = 0;
+    key->parent_seek = 0;
+    for (int i = 0; i < c->currextra; i++)
+    {
+        if (csi->tagorder[i] == tag_artist ||
+            csi->tagorder[i] == tag_albumartist)
+        {
+            key->parent_tag = csi->tagorder[i];
+            key->parent_seek = csi->result_seek[i];
+        }
+    }
+    return true;
+}
+
+int tagtree_album_special_entry(struct tree_context *c, int id)
+{
+    if (c->currtable != TABLE_NAVIBROWSE ||
+        csi->tagorder[c->currextra] != tag_album ||
+        id < 0 || id >= c->special_entry_count)
+        return -1;
+
+    struct tagentry *entry = tagtree_get_entry(c, id);
+    if (!entry)
+        return -1;
+    switch (entry->newtable)
+    {
+        case TABLE_ALLSUBENTRIES_SORTED_BY_ALBUMS:
+            return ALBUMART_LIST_BY_ALBUM;
+        case TABLE_ALLSUBENTRIES:
+            return ALBUMART_LIST_ALL_TRACKS;
+        case TABLE_NAVIBROWSE:
+            return entry->extraseek == -1 ? ALBUMART_LIST_RANDOM : -1;
+        default:
+            return -1;
+    }
+}
+
+const char *tagtree_album_artist_name(struct tree_context *c, int id)
+{
+    struct albumart_list_key key;
+    if (!tagtree_album_art_key(c, id, &key))
+        return NULL;
+    struct tagentry *entry = tagtree_get_entry(c, id);
+    return entry ? entry->album_name : NULL;
+}
+
+/* The main menu entries "Podcasts" and "Hörbücher" open these items of the
+ * root menu (docs/ipod6g-database-media-types.md). */
+
+/* Index of the root menu item with this untranslated name, or -1. Only
+ * items that list database entries ("->") qualify. */
+static int root_entry_index(const char *name)
+{
+    if (rootmenu < 0 || rootmenu >= menu_count || !menus[rootmenu])
+        return -1;
+
+    struct menu_root *root = menus[rootmenu];
+    for (int i = 0; i < root->itemcount; i++)
+    {
+        if (root->items[i]->type == menu_next &&
+            !strcasecmp(root->items[i]->_name, name))
+            return i;
+    }
+    return -1;
+}
+
+/* True if the browser shows the item named name of the root menu, or a
+ * level below it. Level 1 must be a list, not a submenu: csi keeps pointing
+ * to the last entered item while submenus are browsed. */
+bool tagtree_in_root_entry(struct tree_context *c, const char *name)
+{
+    int i = root_entry_index(name);
+    if (i < 0 || c->dirlevel < 1 ||
+        table_history[0] != TABLE_ROOT || extra_history[0] != rootmenu)
+        return false;
+
+    int level1_table = (c->dirlevel == 1) ? c->currtable : table_history[1];
+    return level1_table != TABLE_ROOT && csi == &menus[rootmenu]->items[i]->si;
+}
+
+/* Show the item named name of the root menu as if it had been selected
+ * there, unless the browser is already inside it. Returns false if the
+ * menu configuration has no such item. */
+bool tagtree_open_root_entry(struct tree_context *c, const char *name)
+{
+    int i = root_entry_index(name);
+    if (i < 0)
+        return false;
+    if (tagtree_in_root_entry(c, name))
+        return true;
+
+    tagtree_open_root(c);
+    /* its row: hidden items before it are not listed */
+    int row = i;
+    for (int k = 0; k < i; k++)
+    {
+        if (root_item_hidden(menus[rootmenu], k))
+            row--;
+    }
+    if (tagtree_load(c) <= row)
+        return false;
+
+    c->selected_item = row;
+    tagtree_enter(c, true);
+    return c->dirlevel == 1;
+}
+
+/* The media type a view selects with "mediatype == n" (tagnavi.config) */
+static int csi_media(void)
+{
+    for (int i = 0; i < csi->tagorder_count; i++)
+    {
+        for (int j = 0; j < csi->clause_count[i]; j++)
+        {
+            const struct tagcache_search_clause *cl = csi->clause[i][j];
+            if (cl->tag == tag_virt_mediatype && cl->type == clause_is &&
+                cl->numeric && cl->source == source_constant)
+                return cl->numeric_data;
+        }
+    }
+    return TAGCACHE_MEDIA_MUSIC;
+}
+
+/* Unheard tracks of an album of podcasts or audiobooks, counted once per
+ * state of the play counts */
+static int album_unheard(int media, int32_t seek, int skip_idx)
+{
+    static struct { int32_t seek; int media, skip, count; } cache[8];
+    static unsigned cache_gen;
+    static int cache_next;
+    unsigned gen = tagcache_numeric_generation();
+
+    if (gen != cache_gen)
+    {
+        for (int k = 0; k < (int)ARRAYLEN(cache); k++)
+            cache[k].media = -1;
+        cache_gen = gen;
+    }
+    for (int k = 0; k < (int)ARRAYLEN(cache); k++)
+    {
+        if (cache[k].media == media && cache[k].seek == seek &&
+            cache[k].skip == skip_idx)
+            return cache[k].count;
+    }
+    int count = tagcache_count_unheard(media, tag_album, seek, skip_idx);
+    if (count >= 0)
+    {
+        cache[cache_next].seek = seek;
+        cache[cache_next].media = media;
+        cache[cache_next].skip = skip_idx;
+        cache[cache_next].count = count;
+        cache_next = (cache_next + 1) % ARRAYLEN(cache);
+    }
+    return count;
+}
+
+/* The track or the album of podcasts or audiobooks at row id, for marks
+ * and "mark as unheard": the media type and the track (*idx_id) or album
+ * (*album_seek, *idx_id -1). False for other rows. */
+static bool media_row(struct tree_context *c, int id, int *media,
+                      int *idx_id, int32_t *album_seek)
+{
+    if ((c->currtable != TABLE_NAVIBROWSE &&
+         c->currtable != TABLE_ALLSUBENTRIES &&
+         c->currtable != TABLE_ALLSUBENTRIES_SORTED_BY_ALBUMS) ||
+        id < c->special_entry_count || id >= c->filesindir)
+        return false;
+    struct tagentry *entry = tagtree_get_entry(c, id);
+    if (!entry || entry->extraseek < 0)
+        return false;
+    if (entry->newtable == TABLE_PLAYTRACK)
+    {
+        *idx_id = entry->extraseek;
+        *media = tagcache_entry_media(*idx_id);
+        return *media > TAGCACHE_MEDIA_MUSIC;
+    }
+    *media = csi_media();
+    *idx_id = -1;
+    *album_seek = entry->extraseek;
+    return c->currtable == TABLE_NAVIBROWSE &&
+           csi->tagorder[c->currextra] == tag_album &&
+           *media > TAGCACHE_MEDIA_MUSIC && *media < TAGCACHE_MEDIA_COUNT;
+}
+
+/* Whether rows of the current table can carry marks (tree_item_mark()):
+ * tracks, and albums of podcasts and audiobooks */
+bool tagtree_has_item_marks(struct tree_context *c)
+{
+    if (c->currtable == TABLE_ALLSUBENTRIES ||
+        c->currtable == TABLE_ALLSUBENTRIES_SORTED_BY_ALBUMS)
+        return true;
+    if (c->currtable != TABLE_NAVIBROWSE)
+        return false;
+    int tag = csi->tagorder[c->currextra];
+    return tag == tag_title || tag == tag_filename ||
+           tag == tag_virt_basename ||
+           (tag == tag_album && csi_media() > TAGCACHE_MEDIA_MUSIC);
+}
+
+/* The mark of row id (enum list_item_mark): the speaker at the playing
+ * track, the dot at podcasts and audiobooks not heard yet. The playing
+ * track counts as heard after 15 s, as tagtree_track_finish_event() will
+ * record it. */
+int tagtree_item_mark(struct tree_context *c, int id)
+{
+    struct mp3entry *id3 = (audio_status() & AUDIO_STATUS_PLAY) ?
+                           audio_current_track() : NULL;
+    long playing = id3 ? id3->tagcache_idx - 1 : -1;
+    if (id < c->special_entry_count || id >= c->filesindir)
+        return LIST_MARK_NONE;
+    struct tagentry *entry = tagtree_get_entry(c, id);
+    if (entry && entry->newtable == TABLE_PLAYTRACK &&
+        playing >= 0 && entry->extraseek == playing)
+        return LIST_MARK_PLAYING;
+
+    int media, idx_id;
+    int32_t album_seek;
+    if (!media_row(c, id, &media, &idx_id, &album_seek))
+        return LIST_MARK_NONE;
+    if (idx_id >= 0)
+        return tagcache_entry_heard(idx_id) == 0 ? LIST_MARK_UNHEARD
+                                                 : LIST_MARK_NONE;
+    int skip = (playing >= 0 && id3->elapsed >= 15 * 1000) ? playing : -1;
+    return album_unheard(media, album_seek, skip) > 0 ? LIST_MARK_UNHEARD
+                                                      : LIST_MARK_NONE;
+}
+
+/* "Mark as unheard" for the selected row: its track, or every track of
+ * its album */
+bool tagtree_can_mark_unheard(struct tree_context *c)
+{
+    int media, idx_id;
+    int32_t album_seek;
+    return media_row(c, c->selected_item, &media, &idx_id, &album_seek);
+}
+
+bool tagtree_mark_unheard(struct tree_context *c)
+{
+    int media, idx_id;
+    int32_t album_seek = 0;
+    if (!media_row(c, c->selected_item, &media, &idx_id, &album_seek) ||
+        tagcache_mark_unheard(media, tag_album, album_seek, idx_id) < 0)
+        return false;
+
+    /* a bookmark in these tracks goes too */
+    struct tagcache_search tcs;
+    char path[MAX_PATH];
+    if (!tagcache_search(&tcs, tag_filename))
+        return true;
+    if (idx_id >= 0)
+    {
+        if (tagcache_retrieve(&tcs, idx_id, tag_filename, path, sizeof(path)))
+            bookmark_forget_track(path);
+    }
+    else
+    {
+        tagcache_search_set_media(&tcs, media);
+        tagcache_search_add_filter(&tcs, tag_album, album_seek);
+        while (tagcache_get_next(&tcs, path, sizeof(path)))
+            bookmark_forget_track(path);
+    }
+    tagcache_search_finish(&tcs);
+    return true;
+}
+
+/* Back to the root menu, with its first item selected */
+void tagtree_open_root(struct tree_context *c)
+{
+    while (c->dirlevel > 0)
+        tagtree_exit(c, false);
+    c->currtable = TABLE_ROOT;
+    c->currextra = rootmenu;
+    c->selected_item = 0;
+}
+#endif
 
 
 char *tagtree_get_title(struct tree_context* c)

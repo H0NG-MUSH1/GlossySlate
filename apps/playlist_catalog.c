@@ -516,5 +516,10 @@ bool catalog_add_to_a_playlist(const char* sel, int sel_attr,
     else
         result = catalog_insert_into(playlist, new_playlist, sel, sel_attr);
 
+#ifdef IPOD_6G
+    /* a playlist file was created or changed: the main menu sidebar counts
+     * the playlists anew */
+    root_menu_media_count_changed(MEDIA_COUNT_PLAYLISTS);
+#endif
     return (result == 0);
 }

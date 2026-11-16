@@ -590,6 +590,283 @@ static void draw_eq_sliders(struct screen * screen, int x, int y,
 }
 
 /* Provides a graphical means of editing the EQ settings */
+#ifdef IPOD_6G
+#include "plugin.h"                 /* plugin_get_buffer() */
+#include "bmp.h"                    /* read_bmp_file() */
+/* GlossySlate: the graphical equaliser as designed (GlossySlate/DESIGN.md
+ * 5.13), in the style of the quick menu: the ten bands side by side as
+ * vertical faders, the filter type of the selected band in a capsule at the
+ * top, its gain, frequency and Q on three keys below. The parts are bitmaps
+ * of the theme in .rockbox/wps/<status bar skin>/eq/ (tools/build_eq.py),
+ * loaded into the plugin buffer while the screen is open, like the skin
+ * parser uses it: nothing is taken from the playback buffer. The field is
+ * the dithered gradient of the quick menu, the fonts are the theme's,
+ * shared with the skin. Without the parts, or while a plugin stays loaded,
+ * the screen is drawn as before. Values, steps and keys are unchanged. */
+enum eqgs_part {
+    EQGS_CAP_L, EQGS_CAP_M, EQGS_CAP_R, EQGS_CAPA_L, EQGS_CAPA_M, EQGS_CAPA_R,
+    EQGS_LOW, EQGS_PEAK, EQGS_HIGH, EQGS_LOW_W, EQGS_PEAK_W, EQGS_HIGH_W,
+    EQGS_KEY_BACK, EQGS_DIVIDER, EQGS_ZERO, EQGS_BAND_SEL, EQGS_TRACK,
+    EQGS_FILL, EQGS_KNOB, EQGS_KEY, EQGS_KEY_ACTIVE, EQGS_PART_COUNT
+};
+static const char *const eqgs_part_names[EQGS_PART_COUNT] = {
+    "capsule_left", "capsule_middle", "capsule_right", "capsule_active_left",
+    "capsule_active_middle", "capsule_active_right", "icon_low_shelf",
+    "icon_peak", "icon_high_shelf", "icon_low_shelf_white", "icon_peak_white",
+    "icon_high_shelf_white", "key_back", "divider", "zero_line",
+    "band_selected", "fader_track", "fader_fill", "knob", "key", "key_active",
+};
+static struct bitmap eqgs_bm[EQGS_PART_COUNT];
+
+enum eqgs_font { EQGS_F13, EQGS_F11, EQGS_F14, EQGS_FONT_COUNT };
+static const char *const eqgs_font_names[EQGS_FONT_COUNT] = {
+    FONT_DIR "/16-GlossySlate-Bold13.fnt", FONT_DIR "/14-GlossySlate-Bold11.fnt",
+    FONT_DIR "/24-GlossySlate-Bold14.fnt",
+};
+static int eqgs_fonts[EQGS_FONT_COUNT];
+static bool eqgs_font_loaded[EQGS_FONT_COUNT];
+static fb_data *eqgs_field;
+
+#define EQGS_DARK    LCD_RGBPACK(0x2e, 0x36, 0x44)
+#define EQGS_GREY    LCD_RGBPACK(0x5b, 0x63, 0x71)
+#define EQGS_BLACK   LCD_RGBPACK(0x14, 0x17, 0x1c)
+#define EQGS_WHITE   LCD_RGBPACK(0xff, 0xff, 0xff)
+#define EQGS_WHITE88 LCD_RGBPACK(0xe4, 0xec, 0xf8)
+#define EQGS_MINUS   "\xe2\x88\x92"  /* U+2212 */
+#define EQGS_ZERO_Y  104             /* 0 dB */
+#define EQGS_RANGE   44              /* px from 0 dB to +-24 dB */
+
+/* the field of the quick menu, dithered as the skin's %dr does it */
+static void eqgs_make_field(void)
+{
+    static const unsigned char bayer[4][4] = {
+        {   8, 136,  40, 168 }, { 200,  72, 232, 104 },
+        {  56, 184,  24, 152 }, { 248, 120, 216,  88 },
+    };
+    static const struct { int y, h; unsigned long c0, c1; } bands[2] = {
+        { 0, 132, 0xf7f8fa, 0xedeff3 }, { 132, 108, 0xedeff3, 0xdfe3e9 },
+    };
+    for (int b = 0; b < 2; b++)
+    {
+        int h = bands[b].h;
+        int sr = (bands[b].c0 >> 16) & 0xff, er = (bands[b].c1 >> 16) & 0xff;
+        int sg = (bands[b].c0 >> 8) & 0xff, eg = (bands[b].c1 >> 8) & 0xff;
+        int sb = bands[b].c0 & 0xff, eb = bands[b].c1 & 0xff;
+        for (int i = 0; i < h; i++)
+        {
+            int y = bands[b].y + i;
+            int num = 2 * i + 1, den = 2 * h;
+            int r = ((sr * den + (er - sr) * num) * 31 * 256) / (255 * den);
+            int g = ((sg * den + (eg - sg) * num) * 63 * 256) / (255 * den);
+            int bl = ((sb * den + (eb - sb) * num) * 31 * 256) / (255 * den);
+            fb_data *row = eqgs_field + y * LCD_WIDTH;
+            for (int x = 0; x < LCD_WIDTH; x++)
+            {
+                int t = bayer[y & 3][x & 3];
+                row[x] = FB_RGBPACK_LCD(MIN((r + t) >> 8, 31),
+                                        MIN((g + t) >> 8, 63),
+                                        MIN((bl + t) >> 8, 31));
+            }
+        }
+    }
+}
+
+static void eqgs_unload(void)
+{
+    for (int i = 0; i < EQGS_FONT_COUNT; i++)
+    {
+        if (eqgs_font_loaded[i])
+            font_unload(eqgs_fonts[i]);
+        eqgs_font_loaded[i] = false;
+        eqgs_fonts[i] = FONT_UI;
+    }
+}
+
+static bool eqgs_load(void)
+{
+    char path[MAX_PATH];
+    size_t size;
+    unsigned char *buf = plugin_get_buffer(&size);
+    const char *skin = (const char *)global_settings.sbs_file;
+
+    for (int i = 0; i < EQGS_FONT_COUNT; i++)
+    {
+        eqgs_fonts[i] = FONT_UI;
+        eqgs_font_loaded[i] = false;
+    }
+    /* less than the whole buffer: a plugin stays loaded and owns it */
+    if (!buf || size < PLUGIN_BUFFER_SIZE || !skin[0] || skin[0] == '-')
+        return false;
+
+    size_t field = LCD_WIDTH * LCD_HEIGHT * sizeof(fb_data);
+    eqgs_field = (fb_data *)buf;
+    buf += field;
+    size -= field;
+    for (int i = 0; i < EQGS_PART_COUNT; i++)
+    {
+        snprintf(path, sizeof(path), WPS_DIR "/%s/eq/%s.bmp", skin, eqgs_part_names[i]);
+        eqgs_bm[i].data = buf;
+        int n = read_bmp_file(path, &eqgs_bm[i], size,
+                              FORMAT_NATIVE | FORMAT_TRANSPARENT, NULL);
+        if (n <= 0)
+            return false;
+        n = ALIGN_UP(n, 4);
+        if ((size_t)n > size)
+            return false;
+        buf += n;
+        size -= n;
+    }
+    for (int i = 0; i < EQGS_FONT_COUNT; i++)
+    {
+        int id = font_load_ex(eqgs_font_names[i], 0, 160);   /* as the skin */
+        eqgs_font_loaded[i] = id >= 0;
+        eqgs_fonts[i] = id >= 0 ? id : FONT_UI;
+    }
+    eqgs_make_field();
+    return true;
+}
+
+static void eqgs_bmp(int part, int x, int y)
+{
+    const struct bitmap *bm = &eqgs_bm[part];
+    lcd_bmp_part(bm, 0, 0, x, y, bm->width, bm->height);
+}
+
+static int eqgs_width(int font, const char *s)
+{
+    int w = 0;
+    font_getstringsize((const unsigned char *)s, &w, NULL, font);
+    return w;
+}
+
+static void eqgs_text(int font, unsigned colour, int x, int y, const char *s)
+{
+    lcd_setfont(font);
+    lcd_set_foreground(colour);
+    lcd_putsxy(x, y, (const unsigned char *)s);
+}
+
+static void eqgs_capsule(bool active, int x, int y, int w)
+{
+    int l = active ? EQGS_CAPA_L : EQGS_CAP_L;
+    const struct bitmap *m = &eqgs_bm[l + 1];
+    int mx = x + eqgs_bm[l].width, end = x + w - eqgs_bm[l + 2].width;
+    eqgs_bmp(l, x, y);
+    while (mx < end)
+    {
+        int part = MIN(m->width, end - mx);
+        lcd_bmp_part(m, 0, 0, mx, y, part, m->height);
+        mx += part;
+    }
+    eqgs_bmp(l + 2, end, y);
+}
+
+/* "+3,5 dB", "-2,0 dB" (real minus), "0,0 dB" */
+static void eqgs_format_gain(char *buf, size_t size, int gain)
+{
+    snprintf(buf, size, "%s%d%s%d dB",
+             gain > 0 ? "+" : gain < 0 ? EQGS_MINUS : "",
+             abs(gain) / EQ_USER_DIVISOR, str(LANG_DECIMAL_SEPARATOR),
+             abs(gain) % EQ_USER_DIVISOR);
+}
+
+/* under the band: "125", "1k", "3,5k", "16k" */
+static void eqgs_format_freq_short(char *buf, size_t size, int hz)
+{
+    if (hz < 1000)
+        snprintf(buf, size, "%d", hz);
+    else if ((hz % 1000) / 100)
+        snprintf(buf, size, "%d%s%dk", hz / 1000, str(LANG_DECIMAL_SEPARATOR),
+                 (hz % 1000) / 100);
+    else
+        snprintf(buf, size, "%dk", hz / 1000);
+}
+
+/* fader of a band: track, the fill from the 0 dB line to the gain (the top
+ * of the fill picture above the line, its bottom below), the knob only on
+ * the selected band */
+static void eqgs_band(int i, bool selected)
+{
+    const struct eq_band_setting *s = &global_settings.eq_band_settings[i];
+    const struct bitmap *fill = &eqgs_bm[EQGS_FILL];
+    int mid = 29 + 29 * i;
+    int gain = MAX(EQ_GAIN_MIN, MIN(EQ_GAIN_MAX, s->gain));
+    int y = EQGS_ZERO_Y - (gain * EQGS_RANGE + (gain >= 0 ? EQ_GAIN_MAX / 2 : -EQ_GAIN_MAX / 2))
+                          / EQ_GAIN_MAX;
+    char buf[16];
+
+    eqgs_bmp(EQGS_TRACK, mid - 5, 60);
+    if (y < EQGS_ZERO_Y)
+        lcd_bmp_part(fill, 0, 0, mid - 5, y, fill->width, EQGS_ZERO_Y - y);
+    else if (y > EQGS_ZERO_Y)
+        lcd_bmp_part(fill, 0, fill->height - (y - EQGS_ZERO_Y), mid - 5, EQGS_ZERO_Y,
+                     fill->width, y - EQGS_ZERO_Y);
+    if (selected)
+        eqgs_bmp(EQGS_KNOB, mid - 10, y - 9);
+
+    eqgs_format_freq_short(buf, sizeof(buf), s->cutoff);
+    eqgs_text(eqgs_fonts[EQGS_F11], selected ? EQGS_BLACK : EQGS_GREY,
+              mid - eqgs_width(eqgs_fonts[EQGS_F11], buf) / 2, 154, buf);
+}
+
+static void eqgs_key(int k, bool active, const char *label, const char *value)
+{
+    int x = 13 + 100 * k;                   /* picture with its shadow */
+    eqgs_bmp(active ? EQGS_KEY_ACTIVE : EQGS_KEY, x, 180);
+    int lw = eqgs_width(eqgs_fonts[EQGS_F11], label);
+    int vw = eqgs_width(eqgs_fonts[EQGS_F14], value);
+    eqgs_text(eqgs_fonts[EQGS_F11], active ? EQGS_WHITE88 : EQGS_GREY,
+              x + 1 + (92 - lw) / 2, 185, label);
+    eqgs_text(eqgs_fonts[EQGS_F14], active ? EQGS_WHITE : EQGS_BLACK,
+              x + 1 + (92 - vw) / 2, 196, value);
+}
+
+static void eqgs_draw(int band, enum eq_slider_mode mode)
+{
+    static const int type_names[3] = {
+        LANG_EQUALIZER_BAND_LOW_SHELF, LANG_EQUALIZER_BAND_PEAK,
+        LANG_EQUALIZER_BAND_HIGH_SHELF,
+    };
+    const struct eq_band_setting *s = &global_settings.eq_band_settings[band];
+    int type = MAX(EQ_FILTER_LOW_SHELF, MIN(EQ_FILTER_HIGH_SHELF, s->type));
+    bool type_mode = mode == TYPE;
+    char buf[24];
+
+    lcd_set_viewport(NULL);
+    lcd_bitmap(eqgs_field, 0, 0, LCD_WIDTH, LCD_HEIGHT);
+    lcd_set_drawmode(DRMODE_FG);
+
+    /* top: filter type of the selected band (blue while it is edited), close */
+    const char *name = str(type_names[type]);
+    eqgs_capsule(type_mode, 14, 14, 39 + eqgs_width(eqgs_fonts[EQGS_F13], name) + 11);
+    eqgs_bmp((type_mode ? EQGS_LOW_W : EQGS_LOW) + type, 25, 20);
+    eqgs_text(eqgs_fonts[EQGS_F13], type_mode ? EQGS_WHITE : EQGS_DARK, 53, 18, name);
+    eqgs_bmp(EQGS_KEY_BACK, 282, 14);
+    eqgs_bmp(EQGS_DIVIDER, 14, 46);
+
+    /* the bands: the selected one on its column, the 0 dB line behind the faders */
+    eqgs_bmp(EQGS_BAND_SEL, 29 + 29 * band - 14, 52);
+    eqgs_bmp(EQGS_ZERO, 14, EQGS_ZERO_Y);
+    for (int i = 0; i < EQ_NUM_BANDS; i++)
+        if (i != band)
+            eqgs_band(i, false);
+    eqgs_band(band, true);
+
+    /* gain, frequency and Q of the selected band; the edited one is blue */
+    eqgs_format_gain(buf, sizeof(buf), s->gain);
+    eqgs_key(0, mode == GAIN, str(LANG_GRAPHICAL_EQ_GAIN), buf);
+    snprintf(buf, sizeof(buf), "%d Hz", s->cutoff);
+    eqgs_key(1, mode == CUTOFF, str(LANG_GRAPHICAL_EQ_FREQUENCY), buf);
+    snprintf(buf, sizeof(buf), "%d%s%d", s->q / EQ_USER_DIVISOR,
+             str(LANG_DECIMAL_SEPARATOR), s->q % EQ_USER_DIVISOR);
+    eqgs_key(2, mode == Q, str(LANG_EQUALIZER_BAND_Q), buf);
+
+    lcd_set_drawmode(DRMODE_SOLID);
+    lcd_setfont(FONT_UI);
+    lcd_update();
+}
+#endif /* IPOD_6G */
+
 int eq_menu_graphical(void)
 {
     bool exit_request = false;
@@ -604,10 +881,17 @@ int eq_menu_graphical(void)
 
     FOR_NB_SCREENS(i)
         viewportmanager_theme_enable(i, false, NULL);
+#ifdef IPOD_6G
+    bool gs = eqgs_load();
+    const bool draw = !gs;
+#else
+    const bool draw = true;
+#endif
 
     FOR_NB_SCREENS(i) {
         screens[i].set_viewport(NULL);
-        screens[i].clear_display();
+        if (draw)
+            screens[i].clear_display();
 
         /* Figure out how many sliders can be drawn on the screen */
         h = screens[i].getcharheight();
@@ -637,7 +921,8 @@ int eq_menu_graphical(void)
     while (!exit_request) {
         FOR_NB_SCREENS(i)
         {
-            screens[i].clear_display();
+            if (draw)
+                screens[i].clear_display();
 
             /* Set pointer to the band data currently editable */
             if (mode == TYPE) {
@@ -649,8 +934,9 @@ int eq_menu_graphical(void)
                 min = EQ_FILTER_LOW_SHELF;
                 max = EQ_FILTER_HIGH_SHELF;
 
-                screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
-                         str(LANG_EQUALIZER_FILTER_TYPE), "");
+                if (draw)
+                    screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
+                             str(LANG_EQUALIZER_FILTER_TYPE), "");
             } else if (mode == GAIN) {
                 /* gain */
                 setting = &global_settings.eq_band_settings[current_band].gain;
@@ -660,8 +946,9 @@ int eq_menu_graphical(void)
                 min = EQ_GAIN_MIN;
                 max = EQ_GAIN_MAX;
 
-                screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
-                         str(LANG_GAIN), "(dB)");
+                if (draw)
+                    screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
+                             str(LANG_GAIN), "(dB)");
             } else if (mode == CUTOFF) {
                 /* cutoff */
                 setting = &global_settings.eq_band_settings[current_band].cutoff;
@@ -671,8 +958,9 @@ int eq_menu_graphical(void)
                 min = EQ_CUTOFF_MIN;
                 max = EQ_CUTOFF_MAX;
 
-                screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
-                         str(LANG_SYSFONT_EQUALIZER_BAND_CUTOFF), "(Hz)");
+                if (draw)
+                    screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
+                             str(LANG_SYSFONT_EQUALIZER_BAND_CUTOFF), "(Hz)");
             } else {
                 /* Q */
                 setting = &global_settings.eq_band_settings[current_band].q;
@@ -682,8 +970,9 @@ int eq_menu_graphical(void)
                 min = EQ_Q_MIN;
                 max = EQ_Q_MAX;
 
-                screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
-                         str(LANG_EQUALIZER_BAND_Q), "");
+                if (draw)
+                    screens[i].putsxyf(0, 0, str(LANG_SYSFONT_EQUALIZER_EDIT_MODE),
+                             str(LANG_EQUALIZER_BAND_Q), "");
             }
 
             /* Draw scrollbar if needed */
@@ -702,11 +991,18 @@ int eq_menu_graphical(void)
                 start_item = 0;
             }
             /* Draw equalizer band details */
-            draw_eq_sliders(&screens[i], x, y, nb_eq_sliders[i], start_item,
-                            current_band, mode, scrollbar_size[i]);
+            if (draw)
+            {
+                draw_eq_sliders(&screens[i], x, y, nb_eq_sliders[i], start_item,
+                                current_band, mode, scrollbar_size[i]);
 
-            screens[i].update();
+                screens[i].update();
+            }
         }
+#ifdef IPOD_6G
+        if (gs)
+            eqgs_draw(current_band, mode);
+#endif
 
         button = get_action(CONTEXT_SETTINGS_EQ,TIMEOUT_BLOCK);
 
@@ -779,6 +1075,10 @@ int eq_menu_graphical(void)
         }
     }
 
+#ifdef IPOD_6G
+    if (gs)
+        eqgs_unload();
+#endif
     /* Reset screen settings */
     FOR_NB_SCREENS(i)
     {

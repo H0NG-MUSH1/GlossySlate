@@ -136,6 +136,9 @@ char *getcwd(char *buf, getcwd_size_t size);
 void reload_directory(void);
 bool check_rockboxdir(void);
 struct tree_context* tree_get_context(void);
+/* "Back" at this database level leaves the browser (1 for the categories
+ * that the main menu opens directly). Reset it to 0 afterwards. */
+void tree_set_id3db_exit_level(int level);
 void tree_flush(void);
 void tree_restore(void);
 

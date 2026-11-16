@@ -41,6 +41,13 @@ const char *option_get_valuestring(const struct settings_list *setting,
                              char *buffer, int buf_len,
                              intptr_t temp_var);
 void option_talk_value(const struct settings_list *setting, int value, bool enqueue);
+#ifdef IPOD_6G
+/* Whether a click on setting in a menu switches it to its next value
+ * (option_cycle()) instead of opening option_screen(): yes/no and on/off
+ * settings, and repeat. */
+bool option_cycles(const struct settings_list *setting);
+void option_cycle(const struct settings_list *setting);
+#endif
 
 /* only use this for int and bool settings */
 int option_value_as_int(const struct settings_list *setting);

@@ -292,6 +292,66 @@ next:
     }
 }
 
+#if defined(IPOD_6G) && defined(HAVE_LCD_COLOR)
+/* colour between a and b (native), at num / den */
+static unsigned blend_color(unsigned a, unsigned b, int num, int den)
+{
+    /* the unpack macros are unsigned: subtract as int */
+    int r = (int)RGB_UNPACK_RED(a), g = (int)RGB_UNPACK_GREEN(a),
+        bl = (int)RGB_UNPACK_BLUE(a);
+    r += ((int)RGB_UNPACK_RED(b) - r) * num / den;
+    g += ((int)RGB_UNPACK_GREEN(b) - g) * num / den;
+    bl += ((int)RGB_UNPACK_BLUE(b) - bl) * num / den;
+    return LCD_RGBPACK(r, g, bl);
+}
+
+/* Rows [skip, skip + height) of a glossy bar total pixels high: from
+ * line_color over the gloss colours at 45 % and 55 % to line_end_color,
+ * with a light first row and an edge line at the bottom (settings
+ * "line selector gloss ... color"). A gloss colour the theme leaves out
+ * follows its gradient: at 45 % or 55 % of it, the edge in its end colour. */
+static void gloss_fillrect_part(struct screen *display, int x, int y,
+                                int width, int height, int total, int skip,
+                                unsigned start, unsigned end)
+{
+    const unsigned top = global_settings.lsg_top_color == LIST_COLOR_FROM_THEME
+        ? blend_color(start, end, 45, 100)
+        : (unsigned)global_settings.lsg_top_color;
+    const unsigned bottom =
+        global_settings.lsg_bottom_color == LIST_COLOR_FROM_THEME
+        ? blend_color(start, end, 55, 100)
+        : (unsigned)global_settings.lsg_bottom_color;
+    const unsigned edge =
+        global_settings.lsg_edge_color == LIST_COLOR_FROM_THEME
+        ? end : (unsigned)global_settings.lsg_edge_color;
+    const int a = total * 45 / 100, b = total * 55 / 100;
+    unsigned fg = display->get_foreground();
+
+    if (total < 1)
+        return;
+    for (int row = 0; row < height; row++)
+    {
+        int r = skip + row;
+        unsigned c;
+        if (r >= total)
+            break;
+        if (r == total - 1 && total > 2)
+            c = edge;
+        else if (r < a)
+            c = blend_color(start, top, r, MAX(a, 1));
+        else if (r < b)
+            c = blend_color(top, bottom, r - a, MAX(b - a, 1));
+        else
+            c = blend_color(bottom, end, r - b, MAX(total - 1 - b, 1));
+        if (r == 0 && total > 2)
+            c = blend_color(c, LCD_WHITE, 38, 100); /* light from above */
+        display->set_foreground(c);
+        display->fillrect(x, y + row, width, 1);
+    }
+    display->set_foreground(fg);
+}
+#endif
+
 static void style_line(struct screen *display,
                        int x, int y, struct line_desc *line)
 {
@@ -336,13 +396,29 @@ static void style_line(struct screen *display,
     {
 #ifdef HAVE_LCD_COLOR
         case STYLE_GRADIENT:
+        {
+            int total = height*line->nlines, skip = height*line->line;
             display->set_drawmode(DRMODE_FG);
+#ifdef IPOD_6G
+            if (line->deco_height > 0)
+            {
+                total = line->deco_height;
+                skip = line->deco_offset;
+            }
+            if (style & STYLE_GLOSS)
+            {
+                gloss_fillrect_part(display, x, y, width, bar_height,
+                                    total, skip, line->line_color,
+                                    line->line_end_color);
+                break;
+            }
+#endif
             display->gradient_fillrect_part(x, y, width, bar_height,
                                             line->line_color,
                                             line->line_end_color,
-                                            height*line->nlines,
-                                            height*line->line);
+                                            total, skip);
             break;
+        }
         case STYLE_COLORBAR:
             /*display->set_drawmode(DRMODE_FG);*/
             display->set_foreground(line->line_color);

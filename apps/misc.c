@@ -866,7 +866,13 @@ void check_bootfile(bool do_rolo)
                                                    ID2P(LANG_REBOOT_NOW) };
                     static const struct text_message message={ lines, 2 };
                     button_clear_queue(); /* Empty the keyboard buffer */
+#ifdef IPOD_6G
+                    /* right after USB the screen holds pieces of the USB
+                     * screen and of the menu not yet redrawn */
+                    if(gui_syncyesno_run_blank(&message) == YESNO_YES)
+#else
                     if(gui_syncyesno_run(&message, NULL, NULL) == YESNO_YES)
+#endif
                     {
                         audio_hard_stop();
                         rolo_load(BOOTDIR "/" BOOTFILE);

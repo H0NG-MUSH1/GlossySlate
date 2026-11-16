@@ -262,3 +262,78 @@ void show_busy_slider(struct screen *s, int x, int y, int width, int height)
             dir = 1;
     }
 }
+
+#if defined(IPOD_6G) && defined(HAVE_LCD_COLOR) && !defined(DISABLE_ALPHA_BITMAP)
+/* Not exported by lcd.h; used by the font renderer for anti-aliasing. */
+extern void lcd_alpha_bitmap_part(const unsigned char *src, int src_x,
+                                  int src_y, int stride, int x, int y,
+                                  int width, int height);
+
+/* The knob of the original iPod firmware: a dark bar with softened ends,
+ * semi-transparent over the list rows, without a visible track. */
+#define OVERLAY_END_GAP      3  /* pixels above and below the knob's range */
+/* Transparency of the black knob, 0 (opaque) .. 15 (invisible). Over white
+ * the knob is grey, over a blue selection bar dark blue. */
+#define OVERLAY_KNOB_ALPHA   8
+#define OVERLAY_CORNER_ALPHA 13
+#define OVERLAY_MASK_STRIDE  32 /* pixels per mask row, even, >= knob */
+
+/* alpha faded towards 15 (invisible) by fade steps */
+static int overlay_alpha(int alpha, int fade)
+{
+    return alpha + (15 - alpha) * fade / GUI_SCROLLBAR_FADE_STEPS;
+}
+
+void gui_scrollbar_draw_overlay(struct screen *screen, int x, int y,
+                                int width, int height, int items,
+                                int min_shown, int max_shown,
+                                bool at_right_edge, int fade)
+{
+    /* one row for the ends of the knob, one for its middle */
+    static unsigned char mask[2][OVERLAY_MASK_STRIDE / 2]
+        __attribute__((aligned(4)));
+    int gap = MIN(GUI_SCROLLBAR_OVERLAY_GAP, width - 1);
+    int knob_w = MIN(width - gap, OVERLAY_MASK_STRIDE);
+    int len = height - 2 * OVERLAY_END_GAP;
+    int knob_alpha = overlay_alpha(OVERLAY_KNOB_ALPHA, fade);
+    int corner_alpha = overlay_alpha(OVERLAY_CORNER_ALPHA, fade);
+    int knob_x, start, size;
+
+    if (screen->screen_type != SCREEN_MAIN || knob_w <= 0 || len <= 0 ||
+        fade >= GUI_SCROLLBAR_FADE_STEPS)
+        return;
+
+    scrollbar_helper(min_shown, max_shown, items, len, &size, &start);
+    /* keep a short knob visible with both ends */
+    if (size < 2 * knob_w)
+    {
+        int grow = MIN(2 * knob_w, len) - size;
+        size += grow;
+        start = MAX(0, MIN(start - grow / 2, len - size));
+    }
+    knob_x = at_right_edge ? x + width - gap - knob_w : x + gap;
+
+    for (int i = 0; i < OVERLAY_MASK_STRIDE / 2; i++)
+        mask[0][i] = mask[1][i] = 0;
+    for (int col = 0; col < knob_w; col++)
+    {
+        int shift = (col & 1) * 4; /* the first pixel is the lower nibble */
+        bool side = knob_w > 2 && (col == 0 || col == knob_w - 1);
+        mask[0][col / 2] |= (side ? corner_alpha : knob_alpha) << shift;
+        mask[1][col / 2] |= knob_alpha << shift;
+    }
+
+    unsigned fg = screen->get_foreground();
+    screen->set_foreground(LCD_BLACK);
+    screen->set_drawmode(DRMODE_FG);
+    y += OVERLAY_END_GAP + start;
+    for (int row = 0; row < size; row++)
+    {
+        bool end = (row == 0 || row == size - 1);
+        lcd_alpha_bitmap_part(mask[end ? 0 : 1], 0, 0, OVERLAY_MASK_STRIDE,
+                              knob_x, y + row, knob_w, 1);
+    }
+    screen->set_drawmode(DRMODE_SOLID);
+    screen->set_foreground(fg);
+}
+#endif

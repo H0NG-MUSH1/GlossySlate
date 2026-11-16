@@ -24,9 +24,18 @@
 #include "config.h"
 #include "tagcache.h"
 #include "tree.h"
+#ifdef IPOD_6G
+#include "albumart_list.h"
+#endif
 
 #define TAGNAVI_VERSION    "#! rockbox/tagbrowser/2.0"
 #define TAGMENU_MAX_ITEMS  64
+#ifdef IPOD_6G
+/* Untranslated names of the tagnavi.config root menu items that the main
+ * menu entries "Podcasts" and "Hörbücher" open directly */
+#define TAGNAVI_PODCASTS   "Podcasts"
+#define TAGNAVI_AUDIOBOOKS "Audiobooks"
+#endif
 #define TAGMENU_MAX_MENUS  32
 #define TAGMENU_MAX_FMTS   32
 
@@ -34,6 +43,20 @@ int tagtree_export(void);
 int tagtree_import(void);
 void tagtree_init(void) INIT_ATTR;
 bool tagtree_ready(void);
+#ifdef IPOD_6G
+bool tagtree_album_art_key(struct tree_context *c, int id,
+                           struct albumart_list_key *key);
+/* The fixed picture of entry id of an album list, or -1 for an album */
+int tagtree_album_special_entry(struct tree_context *c, int id);
+const char *tagtree_album_artist_name(struct tree_context *c, int id);
+bool tagtree_in_root_entry(struct tree_context *c, const char *name);
+bool tagtree_open_root_entry(struct tree_context *c, const char *name);
+void tagtree_open_root(struct tree_context *c);
+bool tagtree_has_item_marks(struct tree_context *c);
+int tagtree_item_mark(struct tree_context *c, int id);
+bool tagtree_can_mark_unheard(struct tree_context *c);
+bool tagtree_mark_unheard(struct tree_context *c);
+#endif
 int tagtree_enter(struct tree_context* c, bool is_visible);
 void tagtree_exit(struct tree_context* c, bool is_visible);
 int tagtree_load(struct tree_context* c);

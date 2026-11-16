@@ -887,6 +887,11 @@ void backlight_set_timeout_plugged(int value)
 /* Hold button change event handler. */
 void backlight_hold_changed(bool hold_button)
 {
+#ifdef IPOD_6G
+    /* The UI and the skin redraw in separate passes. While the backlight
+     * fades on hold, keep their last complete frame on the panel. */
+    backlight_hw_hold_screen(hold_button && backlight_on_button_hold == 1);
+#endif
 #ifndef BOOTLOADER
     skin_request_update_locked(hold_button);
 #endif

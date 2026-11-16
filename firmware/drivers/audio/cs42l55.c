@@ -32,6 +32,11 @@
 
 static int bass, treble;
 static int active_dsp_modules;  /* powered DSP modules mask */
+#ifdef IPOD_6G
+/* audiohw_set_volume() / audiohw_set_lineout_volume() wrote the outputs:
+ * then audiohw_postinit() leaves them as they are */
+static bool hp_volume_set, lineout_volume_set;
+#endif
 
 /* convert tenth of dB volume (-600..120) to volume register value */
 static int vol_tenthdb2hw(int db)
@@ -67,6 +72,9 @@ void audiohw_preinit(void)
     bass = 0;
     treble = 0;
     active_dsp_modules = 0;
+#ifdef IPOD_6G
+    hp_volume_set = lineout_volume_set = false;
+#endif
 
     /* Ask Cirrus or maybe Apple what the hell this means */
     cscodec_write(HIDDENCTL, HIDDENCTL_UNLOCK);
@@ -106,10 +114,26 @@ void audiohw_preinit(void)
 
 void audiohw_postinit(void)
 {
-    cscodec_write(HPACTL, 0);
-    cscodec_write(HPBCTL, 0);
-    cscodec_write(LINEACTL, 0);
-    cscodec_write(LINEBCTL, 0);
+#ifdef IPOD_6G
+    /* audio_init() applies the sound settings right after it created the
+     * audio thread, and that thread calls this only afterwards. Writing 0
+     * then put the headphones at 0 dB, far above the volume set, until
+     * the next cold playback start set the volume again: loud noise after
+     * every boot, also in USB mode. A volume at its minimum, which is the
+     * mute bit, was unmuted as well. */
+    if (!hp_volume_set)
+#endif
+    {
+        cscodec_write(HPACTL, 0);
+        cscodec_write(HPBCTL, 0);
+    }
+#ifdef IPOD_6G
+    if (!lineout_volume_set)
+#endif
+    {
+        cscodec_write(LINEACTL, 0);
+        cscodec_write(LINEBCTL, 0);
+    }
     cscodec_write(CLSHCTL, CLSHCTL_ADPTPWR_SIGNAL);
     audiohw_mute(false);
 }
@@ -122,6 +146,9 @@ void audiohw_set_volume(int vol_l, int vol_r)
                     vol_l << HPACTL_HPAVOL_SHIFT);
     cscodec_setbits(HPBCTL, HPBCTL_HPBVOL_MASK | HPBCTL_HPBMUTE,
                     vol_r << HPBCTL_HPBVOL_SHIFT);
+#ifdef IPOD_6G
+    hp_volume_set = true;
+#endif
 }
 
 void audiohw_set_lineout_volume(int vol_l, int vol_r)
@@ -132,6 +159,9 @@ void audiohw_set_lineout_volume(int vol_l, int vol_r)
                     vol_l << LINEACTL_LINEAVOL_SHIFT);
     cscodec_setbits(LINEBCTL, LINEBCTL_LINEBVOL_MASK | LINEBCTL_LINEBMUTE,
                     vol_r << LINEBCTL_LINEBVOL_SHIFT);
+#ifdef IPOD_6G
+    lineout_volume_set = true;
+#endif
 }
 
 void audiohw_enable_lineout(bool enable)
@@ -228,17 +258,58 @@ void audiohw_close(void)
 }
 
 /* Note: Disable output before calling this function */
+#ifdef IPOD_6G
+/* The CODEC is the I2S clock master (CLKCTL1_MASTER): changing its sample
+ * rate while its outputs play clicks. With a fixed playback frequency of
+ * 48 kHz that happened at the first playback after every boot (the
+ * hardware starts at 44.1 kHz and switches then), with "auto" at every
+ * switch. So mute the master (soft ramp, MISCCTL_DIGSFT) and the analog
+ * outputs first, switch, let the CODEC settle and restore them. While the
+ * outputs are still muted (boot, before audiohw_postinit()) only switch.
+ * Busy waits: no other thread may change the volume registers meanwhile,
+ * and this happens once per switch only. */
+static void set_clkctl2(unsigned char val)
+{
+    if (cscodec_read(CLKCTL2) == val)
+        return;
+    const unsigned char both = PLAYCTL_MSTAMUTE | PLAYCTL_MSTBMUTE;
+    if ((cscodec_read(PLAYCTL) & both) == both)
+    {
+        cscodec_write(CLKCTL2, val);
+        return;
+    }
+    unsigned char hpa = cscodec_read(HPACTL), hpb = cscodec_read(HPBCTL);
+    unsigned char lina = cscodec_read(LINEACTL), linb = cscodec_read(LINEBCTL);
+    audiohw_mute(true);
+    cscodec_write(HPACTL, hpa | HPACTL_HPAMUTE);
+    cscodec_write(HPBCTL, hpb | HPBCTL_HPBMUTE);
+    cscodec_write(LINEACTL, lina | LINEACTL_LINEAMUTE);
+    cscodec_write(LINEBCTL, linb | LINEBCTL_LINEBMUTE);
+    udelay(20000);              /* soft ramp down */
+    cscodec_write(CLKCTL2, val);
+    udelay(5000);               /* CODEC locks to the new rate */
+    cscodec_write(HPACTL, hpa);
+    cscodec_write(HPBCTL, hpb);
+    cscodec_write(LINEACTL, lina);
+    cscodec_write(LINEBCTL, linb);
+    audiohw_mute(false);
+}
+#define CLKCTL2_WRITE(val) set_clkctl2(val)
+#else
+#define CLKCTL2_WRITE(val) cscodec_write(CLKCTL2, val)
+#endif
+
 void audiohw_set_frequency(int fsel)
 {
-    if (fsel == HW_FREQ_8) cscodec_write(CLKCTL2, CLKCTL2_8000HZ);
-    else if (fsel == HW_FREQ_11) cscodec_write(CLKCTL2, CLKCTL2_11025HZ);
-    else if (fsel == HW_FREQ_12) cscodec_write(CLKCTL2, CLKCTL2_12000HZ);
-    else if (fsel == HW_FREQ_16) cscodec_write(CLKCTL2, CLKCTL2_16000HZ);
-    else if (fsel == HW_FREQ_22) cscodec_write(CLKCTL2, CLKCTL2_22050HZ);
-    else if (fsel == HW_FREQ_24) cscodec_write(CLKCTL2, CLKCTL2_24000HZ);
-    else if (fsel == HW_FREQ_32) cscodec_write(CLKCTL2, CLKCTL2_32000HZ);
-    else if (fsel == HW_FREQ_44) cscodec_write(CLKCTL2, CLKCTL2_44100HZ);
-    else if (fsel == HW_FREQ_48) cscodec_write(CLKCTL2, CLKCTL2_48000HZ);
+    if (fsel == HW_FREQ_8) CLKCTL2_WRITE(CLKCTL2_8000HZ);
+    else if (fsel == HW_FREQ_11) CLKCTL2_WRITE(CLKCTL2_11025HZ);
+    else if (fsel == HW_FREQ_12) CLKCTL2_WRITE(CLKCTL2_12000HZ);
+    else if (fsel == HW_FREQ_16) CLKCTL2_WRITE(CLKCTL2_16000HZ);
+    else if (fsel == HW_FREQ_22) CLKCTL2_WRITE(CLKCTL2_22050HZ);
+    else if (fsel == HW_FREQ_24) CLKCTL2_WRITE(CLKCTL2_24000HZ);
+    else if (fsel == HW_FREQ_32) CLKCTL2_WRITE(CLKCTL2_32000HZ);
+    else if (fsel == HW_FREQ_44) CLKCTL2_WRITE(CLKCTL2_44100HZ);
+    else if (fsel == HW_FREQ_48) CLKCTL2_WRITE(CLKCTL2_48000HZ);
 }
 
 #ifdef HAVE_RECORDING

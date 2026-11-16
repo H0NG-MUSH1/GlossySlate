@@ -330,6 +330,11 @@ static void fill_inquiry(IF_MD_NONVOID(int lun));
 static void send_and_read_next(void);
 static bool ejected[NUM_DRIVES];
 static bool locked[NUM_DRIVES];
+#ifdef IPOD_6G
+/* ejected[] belongs to the current connection only (stale after a replug
+ * until the host configures the device again) */
+static volatile bool connection_active = false;
+#endif
 
 static int usb_interface;
 
@@ -409,6 +414,26 @@ static void usb_storage_notify_hotswap(int volume,bool inserted)
 void usb_set_skip_first_drive(bool skip)
 {
     skip_first = skip;
+}
+#endif
+
+#ifdef IPOD_6G
+/* true once the host has ejected every drive of this connection (SCSI
+ * START STOP UNIT with the eject bit): the USB screen then says the cable
+ * may be pulled (apps/gui/usb_screen.c, ACTIVITY_USBEJECTED) */
+bool usb_storage_all_ejected(void)
+{
+    int first = 0;
+#ifdef HAVE_MULTIDRIVE
+    if(skip_first)
+        first = 1;   /* the host never sees drive 0 */
+#endif
+    if(!connection_active || first >= storage_num_drives())
+        return false;
+    for(int i = first; i < storage_num_drives(); i++)
+        if(!ejected[i])
+            return false;
+    return true;
 }
 #endif
 
@@ -522,11 +547,17 @@ static int usb_storage_init_connection(void)
         ejected[i] = !check_disk_present(IF_MD(i));
         queue_broadcast(SYS_USB_LUN_LOCKED, (i<<16)+0);
     }
+#ifdef IPOD_6G
+    connection_active = true;
+#endif
     return 0;
 }
 
 void usb_storage_disconnect(void)
 {
+#ifdef IPOD_6G
+    connection_active = false;
+#endif
 #ifndef USB_STATIC_ALLOC
     usb_handle = core_free(usb_handle);
 #endif

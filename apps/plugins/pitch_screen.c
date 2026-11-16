@@ -205,6 +205,346 @@ static bool at_limit = false;
  *
  */
 
+#ifdef IPOD_6G
+/* GlossySlate: the tempo screen as designed (GlossySlate/DESIGN.md 5.12), in
+ * the style of the quick menu. The parts are bitmaps of the theme in
+ * .rockbox/wps/<status bar skin>/tempo/ (tools/build_tempo.py), loaded into
+ * the plugin buffer while the screen is open; the field is the dithered
+ * gradient of the quick menu, the texts are set with the theme's fonts,
+ * shared with the skin (font_load_ex() with the skin's glyph cache, so no
+ * font is loaded a second time). Without the parts (another theme) the
+ * screen is drawn as before. Keys, values and speech are unchanged. */
+enum gs_part {
+    GS_CAP_L, GS_CAP_M, GS_CAP_R, GS_ICON_MODE, GS_KEY_100, GS_KEY_BACK,
+    GS_DIVIDER, GS_FIELD, GS_SLOWER, GS_FASTER, GS_TRACK, GS_FILL, GS_KNOB,
+    GS_MARK, GS_KEY, GS_KEY_HELD, GS_ARR_L, GS_ARR_R, GS_ARR_L_W, GS_ARR_R_W,
+    GS_WHEEL, GS_ICON_PITCH, GS_ICON_SPEED, GS_PART_COUNT
+};
+static const char *const gs_part_names[GS_PART_COUNT] = {
+    "capsule_left", "capsule_middle", "capsule_right", "icon_mode", "key_100",
+    "key_back", "divider", "value_field", "icon_slower", "icon_faster",
+    "slider_track", "slider_fill", "slider_knob", "slider_mark", "key",
+    "key_held", "arrow_left", "arrow_right", "arrow_left_white",
+    "arrow_right_white", "icon_wheel", "icon_pitch", "icon_speed",
+};
+static struct bitmap gs_bm[GS_PART_COUNT];
+
+enum gs_font { GS_F13, GS_F11, GS_F17, GS_F14, GS_F12, GS_FONT_COUNT };
+static const char *const gs_font_names[GS_FONT_COUNT] = {
+    FONT_DIR "/16-GlossySlate-Bold13.fnt", FONT_DIR "/14-GlossySlate-Bold11.fnt",
+    FONT_DIR "/20-GlossySlate-Bold17.fnt", FONT_DIR "/24-GlossySlate-Bold14.fnt",
+    FONT_DIR "/16-GlossySlate-Bold12.fnt",
+};
+#define GS_FONT_GLYPHS 160          /* the glyph cache the skin loads them with */
+static int gs_fonts[GS_FONT_COUNT];
+static bool gs_font_loaded[GS_FONT_COUNT];   /* to give back with font_unload() */
+
+static fb_data *gs_field;           /* the background, LCD_WIDTH x LCD_HEIGHT */
+static bool gs_active;
+static int gs_held;                 /* key held: -1 left, 1 right, 0 none */
+
+#define GS_DARK   LCD_RGBPACK(0x2e, 0x36, 0x44)
+#define GS_GREY   LCD_RGBPACK(0x5b, 0x63, 0x71)
+#define GS_BLACK  LCD_RGBPACK(0x14, 0x17, 0x1c)
+#define GS_RED    LCD_RGBPACK(0xb8, 0x28, 0x1c)
+#define GS_WHITE  LCD_RGBPACK(0xff, 0xff, 0xff)
+#define GS_WHITE88 LCD_RGBPACK(0xe4, 0xec, 0xf8)  /* white 88 % on the blue key */
+#define GS_MINUS  "\xe2\x88\x92"    /* U+2212 */
+
+/* the field: #F7F8FA -> #EDEFF3 over rows 0-131, -> #DFE3E9 over 132-239,
+ * dithered to RGB565 exactly as the skin's %dr (draw_gradient_dithered()),
+ * so it is the field of the quick menu */
+static void gs_make_field(void)
+{
+    static const unsigned char bayer[4][4] = {
+        {   8, 136,  40, 168 }, { 200,  72, 232, 104 },
+        {  56, 184,  24, 152 }, { 248, 120, 216,  88 },
+    };
+    static const struct { int y, h; unsigned long c0, c1; } bands[2] = {
+        { 0, 132, 0xf7f8fa, 0xedeff3 }, { 132, 108, 0xedeff3, 0xdfe3e9 },
+    };
+    for (int b = 0; b < 2; b++)
+    {
+        int h = bands[b].h;
+        int sr = (bands[b].c0 >> 16) & 0xff, er = (bands[b].c1 >> 16) & 0xff;
+        int sg = (bands[b].c0 >> 8) & 0xff, eg = (bands[b].c1 >> 8) & 0xff;
+        int sb = bands[b].c0 & 0xff, eb = bands[b].c1 & 0xff;
+        for (int i = 0; i < h; i++)
+        {
+            int y = bands[b].y + i;
+            int num = 2 * i + 1, den = 2 * h;
+            int r = ((sr * den + (er - sr) * num) * 31 * 256) / (255 * den);
+            int g = ((sg * den + (eg - sg) * num) * 63 * 256) / (255 * den);
+            int bl = ((sb * den + (eb - sb) * num) * 31 * 256) / (255 * den);
+            fb_data *row = gs_field + y * LCD_WIDTH;
+            for (int x = 0; x < LCD_WIDTH; x++)
+            {
+                int t = bayer[y & 3][x & 3];
+                row[x] = FB_RGBPACK_LCD(MIN((r + t) >> 8, 31),
+                                        MIN((g + t) >> 8, 63),
+                                        MIN((bl + t) >> 8, 31));
+            }
+        }
+    }
+}
+
+static void gs_unload(void)
+{
+    for (int i = 0; i < GS_FONT_COUNT; i++)
+    {
+        /* a shared font (also the UI font) only loses this reference */
+        if (gs_font_loaded[i])
+            rb->font_unload(gs_fonts[i]);
+        gs_font_loaded[i] = false;
+        gs_fonts[i] = FONT_UI;
+    }
+}
+
+/* parts and fonts of the theme; false: draw the screen as before */
+static bool gs_load(void)
+{
+    char path[MAX_PATH];
+    size_t size;
+    unsigned char *buf = rb->plugin_get_buffer(&size);
+    const char *skin = (const char *)rb->global_settings->sbs_file;
+
+    for (int i = 0; i < GS_FONT_COUNT; i++)
+    {
+        gs_fonts[i] = FONT_UI;
+        gs_font_loaded[i] = false;
+    }
+    if (!buf || !skin[0] || skin[0] == '-')
+        return false;
+
+    size_t field = LCD_WIDTH * LCD_HEIGHT * sizeof(fb_data);
+    if (size < field)
+        return false;
+    gs_field = (fb_data *)buf;
+    buf += field;
+    size -= field;
+
+    for (int i = 0; i < GS_PART_COUNT; i++)
+    {
+        rb->snprintf(path, sizeof(path), WPS_DIR "/%s/tempo/%s.bmp",
+                     skin, gs_part_names[i]);
+        gs_bm[i].data = buf;
+        int n = rb->read_bmp_file(path, &gs_bm[i], size,
+                                  FORMAT_NATIVE | FORMAT_TRANSPARENT, NULL);
+        if (n <= 0)
+            return false;
+        n = ALIGN_UP(n, 4);
+        if ((size_t)n > size)
+            return false;
+        buf += n;
+        size -= n;
+    }
+
+    for (int i = 0; i < GS_FONT_COUNT; i++)
+    {
+        int id = rb->font_load_ex(gs_font_names[i], 0, GS_FONT_GLYPHS);
+        gs_font_loaded[i] = id >= 0;
+        gs_fonts[i] = id >= 0 ? id : FONT_UI;
+    }
+    gs_make_field();
+    return true;
+}
+
+static void gs_bmp(const struct bitmap *bm, int x, int y)
+{
+    rb->lcd_bmp_part(bm, 0, 0, x, y, bm->width, bm->height);
+}
+
+static int gs_width(int font, const char *s)
+{
+    int w = 0;
+    rb->font_getstringsize((const unsigned char *)s, &w, NULL, font);
+    return w;
+}
+
+static void gs_text(int font, unsigned colour, int x, int y, const char *s)
+{
+    rb->lcd_setfont(font);
+    rb->lcd_set_foreground(colour);
+    rb->lcd_putsxy(x, y, (const unsigned char *)s);
+}
+
+static void gs_text_centred(int font, unsigned colour, int x, int w, int y,
+                            const char *s)
+{
+    gs_text(font, colour, x + (w - gs_width(font, s)) / 2, y, s);
+}
+
+/* a capsule of the given width from the three parts; the middle part is 4 px
+ * wide (one dither period) and repeated */
+static void gs_capsule(int x, int y, int w)
+{
+    const struct bitmap *l = &gs_bm[GS_CAP_L], *m = &gs_bm[GS_CAP_M],
+                        *r = &gs_bm[GS_CAP_R];
+    int mx = x + l->width, end = x + w - r->width;
+    gs_bmp(l, x, y);
+    while (mx < end)
+    {
+        int part = MIN(m->width, end - mx);
+        rb->lcd_bmp_part(m, 0, 0, mx, y, part, m->height);
+        mx += part;
+    }
+    gs_bmp(r, end, y);
+}
+
+/* log2(v / 100 %) in 1/1000, for the slider (logarithmic, 100 % in the middle) */
+static int gs_log2_permille(int32_t v)
+{
+    int64_t x = ((int64_t)v << 16) / PITCH_SPEED_100;
+    int64_t result = 0;
+    if (x <= 0)
+        return -1000;
+    while (x >= (2 << 16)) { x >>= 1; result += 65536; }
+    while (x < (1 << 16))  { x <<= 1; result -= 65536; }
+    for (int b = 32768; b; b >>= 1)
+    {
+        x = (x * x) >> 16;
+        if (x >= (2 << 16))
+        {
+            x >>= 1;
+            result += b;
+        }
+    }
+    return (int)((result * 1000) >> 16);
+}
+
+/* place of a value on the slider in 1/1000: 50 % .. 200 % or -12 .. +12 semitones */
+static int gs_slider_place(int32_t pitch_or_speed, int32_t semitone, bool semi)
+{
+    int p = semi ? 500 + (int)(((int64_t)semitone * 1000) / (24 * PITCH_SPEED_PRECISION))
+                 : 500 + gs_log2_permille(pitch_or_speed) / 2;
+    return MAX(0, MIN(1000, p));
+}
+
+static void gs_slider(int x, int y, int mark_y, int place)
+{
+    const struct bitmap *track = &gs_bm[GS_TRACK];
+    int fill = place * track->width / 1000;
+    gs_bmp(&gs_bm[GS_MARK], x + track->width / 2 - 1, mark_y);
+    gs_bmp(track, x, y);
+    if (fill > 0)
+        rb->lcd_bmp_part(&gs_bm[GS_FILL], 0, 0, x, y, fill, gs_bm[GS_FILL].height);
+    gs_bmp(&gs_bm[GS_KNOB], x + fill - gs_bm[GS_KNOB].width / 2, y - 5);
+}
+
+/* "112,0 %" (one decimal) */
+static void gs_format_percent(char *buf, size_t size, int32_t v)
+{
+    rb->snprintf(buf, size, "%ld%s%ld %%", (long)(v / PITCH_SPEED_PRECISION),
+                 rb->str(LANG_DECIMAL_SEPARATOR),
+                 (long)((v % PITCH_SPEED_PRECISION) / (PITCH_SPEED_PRECISION / 10)));
+}
+
+/* "+2,71" semitones (two decimals), a real minus */
+static void gs_format_semitone(char *buf, size_t size, int32_t s)
+{
+    rb->snprintf(buf, size, "%s%d%s%02d", s < 0 ? GS_MINUS : "+",
+                 abs(s / PITCH_SPEED_PRECISION), rb->str(LANG_DECIMAL_SEPARATOR),
+                 abs((s % PITCH_SPEED_PRECISION) / (PITCH_SPEED_PRECISION / 100)));
+}
+
+/* one of the two keys at the bottom (left: side -1, right: 1) */
+static void gs_key(int side, const char *label, const char *value)
+{
+    bool held = gs_held == side;
+    int x = side < 0 ? 13 : 177;          /* picture with its shadow */
+    int ex = x + 1, ew = 128;             /* the key itself */
+    gs_bmp(&gs_bm[held ? GS_KEY_HELD : GS_KEY], x, 176);
+    if (side < 0)
+        gs_bmp(&gs_bm[held ? GS_ARR_L_W : GS_ARR_L], 23, 193);
+    else
+        gs_bmp(&gs_bm[held ? GS_ARR_R_W : GS_ARR_R], 292, 193);
+    gs_text_centred(gs_fonts[GS_F11], held ? GS_WHITE88 : GS_GREY, ex, ew, 180, label);
+    gs_text_centred(gs_fonts[GS_F14], held ? GS_WHITE : GS_BLACK, ex, ew, 192, value);
+}
+
+static void gs_draw(int32_t pitch, int32_t semitone, int32_t speed)
+{
+    char buf[32];
+    bool semi = rb->global_settings->pitch_mode_semitone;
+    bool stretch = rb->global_settings->pitch_mode_timestretch &&
+                   rb->dsp_timestretch_available();
+
+    rb->lcd_set_viewport(NULL);
+    rb->lcd_bitmap(gs_field, 0, 0, LCD_WIDTH, LCD_HEIGHT);
+    rb->lcd_set_drawmode(DRMODE_FG);
+
+    /* top row: mode capsule (play switches it), timestretch capsule, the
+     * round keys 100 % (hold select) and close (menu), divider */
+    const char *mode = semi ? rb->str(LANG_SEMITONE) : rb->str(LANG_TEMPO_PERCENT);
+    int cw = 31 + gs_width(gs_fonts[GS_F13], mode) + 11;
+    gs_capsule(14, 14, cw);
+    gs_bmp(&gs_bm[GS_ICON_MODE], 25, 21);
+    gs_text(gs_fonts[GS_F13], GS_DARK, 45, 18, mode);
+    if (stretch)
+    {
+        const char *ts = rb->str(LANG_TEMPO_TIMESTRETCH);
+        int tx = 14 + cw + 8;
+        gs_capsule(tx, 14, 10 + gs_width(gs_fonts[GS_F13], ts) + 10);
+        gs_text(gs_fonts[GS_F13], GS_DARK, tx + 10, 18, ts);
+    }
+    gs_bmp(&gs_bm[GS_KEY_100], 250, 14);
+    gs_bmp(&gs_bm[GS_KEY_BACK], 282, 14);
+    gs_bmp(&gs_bm[GS_DIVIDER], 14, 58);
+
+    if (!stretch)
+    {
+        /* field with the rate, slider between tortoise and hare */
+        gs_bmp(&gs_bm[GS_FIELD], 80, 72);
+        gs_text_centred(gs_fonts[GS_F11], GS_GREY, 80, 160, 80,
+                        rb->str(LANG_PLAYBACK_RATE));
+        if (semi)
+            gs_format_semitone(buf, sizeof(buf), semitone);
+        else
+            gs_format_percent(buf, sizeof(buf), pitch);
+        gs_text_centred(gs_fonts[GS_F17], GS_BLACK, 80, 160, 95, buf);
+        gs_bmp(&gs_bm[GS_SLOWER], 22, 139);
+        gs_bmp(&gs_bm[GS_FASTER], 276, 138);
+        gs_slider(55, 142, 155, gs_slider_place(pitch, semitone, semi));
+
+        /* keys: hold for -2 % / +2 %, the wheel between them */
+        const char *hold = rb->str(LANG_TEMPO_HOLD);
+        gs_key(-1, hold, GS_MINUS "2 %");
+        gs_key(1, hold, "+2 %");
+        gs_bmp(&gs_bm[GS_WHEEL], 148, 185);
+    }
+    else
+    {
+        /* two rows like the quick menu: pitch (wheel), speed (left/right) */
+        gs_bmp(&gs_bm[GS_ICON_PITCH], 14, 74);
+        gs_slider(40, 78, 89, gs_slider_place(pitch, semitone, semi));
+        if (semi)
+            gs_format_semitone(buf, sizeof(buf), semitone);
+        else
+            gs_format_percent(buf, sizeof(buf), pitch);
+        gs_text(gs_fonts[GS_F12], GS_DARK, 306 - gs_width(gs_fonts[GS_F12], buf), 74, buf);
+
+        gs_bmp(&gs_bm[GS_ICON_SPEED], 14, 110);
+        gs_slider(40, 114, 125, gs_slider_place(speed, 0, false));
+        gs_format_percent(buf, sizeof(buf), speed);
+        gs_text(gs_fonts[GS_F12], at_limit ? GS_RED : GS_DARK,
+                306 - gs_width(gs_fonts[GS_F12], buf), 110, buf);
+        if (at_limit)
+        {
+            const char *lim = rb->str(LANG_STRETCH_LIMIT);
+            gs_text(gs_fonts[GS_F11], GS_RED, 306 - gs_width(gs_fonts[GS_F11], lim), 125, lim);
+        }
+
+        const char *spd = rb->str(LANG_SPEED);
+        gs_key(-1, spd, rb->str(LANG_PITCH_DOWN));
+        gs_key(1, spd, rb->str(LANG_PITCH_UP));
+    }
+
+    rb->lcd_set_drawmode(DRMODE_SOLID);
+    rb->lcd_setfont(FONT_UI);
+    rb->lcd_update();
+}
+#endif /* IPOD_6G */
+
 static void speak_pitch_mode(bool enqueue)
 {
     bool timestretch_mode = rb->global_settings->pitch_mode_timestretch && rb->dsp_timestretch_available();
@@ -811,12 +1151,20 @@ int gui_syncpitchscreen_run(void)
     /* set the semitone index based on the current pitch */
     semitone = get_semitone_from_pitch(pitch);
 
+#ifdef IPOD_6G
+    gs_held = 0;
+    gs_active = gs_load();
+#endif
     /* initialize pitchscreen vps */
     FOR_NB_SCREENS(i)
     {
         rb->viewport_set_defaults(&parent[i], i);
         max_lines[i] = viewport_get_nb_lines(&parent[i]);
         pitchscreen_fix_viewports(&parent[i], pitch_viewports[i]);
+#ifdef IPOD_6G
+        if (gs_active)
+            continue;
+#endif
         rb->screens[i]->set_viewport(&parent[i]);
         rb->screens[i]->clear_viewport();
 
@@ -827,6 +1175,11 @@ int gui_syncpitchscreen_run(void)
 
     while (!exit)
     {
+#ifdef IPOD_6G
+        if (gs_active)
+            gs_draw(pitch, semitone, speed);
+        else
+#endif
         FOR_NB_SCREENS(i)
             pitchscreen_draw(rb->screens[i], max_lines[i],
                               pitch_viewports[i], pitch, semitone
@@ -915,6 +1268,9 @@ int gui_syncpitchscreen_run(void)
                 break;
 
             case ACTION_PS_NUDGE_RIGHT:
+#ifdef IPOD_6G
+                gs_held = 1;
+#endif
                 if (!rb->global_settings->pitch_mode_timestretch)
                 {
                     new_pitch = pitch_increase(pitch, PITCH_NUDGE_DELTA, false
@@ -948,6 +1304,9 @@ int gui_syncpitchscreen_run(void)
                 break;
 
             case ACTION_PS_NUDGE_RIGHTOFF:
+#ifdef IPOD_6G
+                gs_held = 0;
+#endif
                 if (nudged)
                 {
                     pitch = pitch_increase(pitch, -PITCH_NUDGE_DELTA, false
@@ -961,6 +1320,9 @@ int gui_syncpitchscreen_run(void)
                 break;
 
             case ACTION_PS_NUDGE_LEFT:
+#ifdef IPOD_6G
+                gs_held = -1;
+#endif
                 if (!rb->global_settings->pitch_mode_timestretch)
                 {
                     new_pitch = pitch_increase(pitch, -PITCH_NUDGE_DELTA, false
@@ -994,6 +1356,9 @@ int gui_syncpitchscreen_run(void)
                 break;
 
             case ACTION_PS_NUDGE_LEFTOFF:
+#ifdef IPOD_6G
+                gs_held = 0;
+#endif
                 if (nudged)
                 {
                     pitch = pitch_increase(pitch, PITCH_NUDGE_DELTA, false
@@ -1042,7 +1407,12 @@ int gui_syncpitchscreen_run(void)
 
             default:
                 if (rb->default_event_handler(button) == SYS_USB_CONNECTED)
+                {
+#ifdef IPOD_6G
+                    gs_unload();
+#endif
                     return 1;
+                }
                 break;
         }
         if (pitch_delta)
@@ -1109,6 +1479,9 @@ int gui_syncpitchscreen_run(void)
     }
 
     //pop_current_activity();
+#ifdef IPOD_6G
+    gs_unload();
+#endif
 
     /* Clean up */
     FOR_NB_SCREENS(i)

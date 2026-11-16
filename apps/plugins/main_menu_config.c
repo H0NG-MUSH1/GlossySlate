@@ -173,7 +173,10 @@ enum plugin_status plugin_start(const void* parameter)
 {
     (void)parameter;
     bool show_icons = rb->global_settings->show_icons;
+#ifndef IPOD_6G
+    /* iPod 6G: no icons, the rows say "On"/"Off" */
     rb->global_settings->show_icons = true;
+#endif
     struct gui_synclist list;
     bool done = false;
     bool changed = false;

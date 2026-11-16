@@ -167,6 +167,10 @@ MAKE_MENU(unplug_menu, ID2P(LANG_HEADPHONE_UNPLUG), 0, Icon_NOICON,
           &unplug_mode, &unplug_autoresume);
 #endif
 
+#ifdef HAVE_MIKEY_REMOTE
+MENUITEM_SETTING(headset_remote_control, &global_settings.headset_remote_control, NULL);
+#endif
+
 MENUITEM_SETTING(skip_length, &global_settings.skip_length, NULL);
 MENUITEM_SETTING(prevent_skip, &global_settings.prevent_skip, NULL);
 MENUITEM_SETTING(rewind_across_tracks, &global_settings.rewind_across_tracks, NULL);
@@ -202,6 +206,9 @@ MAKE_MENU(playback_settings,ID2P(LANG_PLAYBACK),0,
           &next_folder, &constrain_next_folder, &cuesheet
 #ifdef HAVE_HEADPHONE_DETECTION
          ,&unplug_menu
+#endif
+#ifdef HAVE_MIKEY_REMOTE
+         ,&headset_remote_control
 #endif
          ,&skip_length, &prevent_skip
           ,&rewind_across_tracks

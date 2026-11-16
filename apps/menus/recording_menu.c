@@ -460,6 +460,14 @@ int rectrigger(void)
         pm_h[i] = SYSFONT_HEIGHT;
         trig_width[i] = triggervp[i].width;
     }
+#ifdef IPOD_6G
+    /* the screen was cleared: draw the whole status bar skin again. Its
+     * lines are only rewritten when they change, and the tile of the
+     * sidebar was the same as one menu level up (Trigger), so it stayed
+     * empty until a value changed. */
+    FOR_NB_SCREENS(i)
+        skin_update(CUSTOM_STATUSBAR, i, SKIN_REFRESH_ALL);
+#endif
     /* TODO: what to do if there is < 4 lines on the screen? */
 
     settings[TRIGGER_MODE] =

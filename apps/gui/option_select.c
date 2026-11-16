@@ -609,6 +609,53 @@ bool option_screen(const struct settings_list *setting,
     return false;
 }
 
+#ifdef IPOD_6G
+bool option_cycles(const struct settings_list *setting)
+{
+    /* plain yes/no and on/off settings, and repeat: they switch in place
+     * and show their value in the row. Every other setting opens its page,
+     * also a bool with words of its own (Inverted/Normal), whose value would
+     * crowd the name. F_BOOL_SETTING is F_T_BOOL plus a flag, so compare
+     * all of its bits (F_T_INT and F_T_UINT share bits with F_T_BOOL). */
+    if ((setting->flags & F_BOOL_SETTING) == F_BOOL_SETTING)
+    {
+        int yes = setting->bool_setting->lang_yes;
+        int no = setting->bool_setting->lang_no;
+        return (yes == LANG_SET_BOOL_YES && no == LANG_SET_BOOL_NO) ||
+               (yes == LANG_ON && no == LANG_OFF);
+    }
+    return setting->setting == &global_settings.repeat_mode;
+}
+
+void option_cycle(const struct settings_list *setting)
+{
+    int var_type = setting->flags&F_T_MASK;
+    void (*function)(int) = NULL;
+    int nb_items = 0, selected = 0, value, oldvalue;
+
+    if (var_type == F_T_BOOL)
+        oldvalue = *(bool*)setting->setting ? 1 : 0;
+    else if (var_type == F_T_INT || var_type == F_T_UINT)
+        oldvalue = *(int*)setting->setting;
+    else
+        return;
+    val_to_selection(setting, oldvalue, &nb_items, &selected, &function);
+    if (nb_items < 2)
+        return;
+    value = selection_to_val(setting, (selected + 1) % nb_items);
+    if (var_type == F_T_BOOL)
+        *(bool*)setting->setting = (value == 1);
+    else
+        *(int*)setting->setting = value;
+    settings_save();
+    if (function && (!HASFLAG(setting, F_CB_ONLY_IF_CHANGED) ||
+                     value != oldvalue))
+        function(value);
+    if (global_settings.talk_menu)
+        option_talk_value(setting, value, false);
+}
+#endif
+
 int get_setting_info_for_bar(const struct settings_list *setting, int offset, int *count, int *val)
 {
     int var_type = setting->flags&F_T_MASK;

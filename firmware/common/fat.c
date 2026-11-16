@@ -292,6 +292,14 @@ static struct bpb
 static uint8_t fat_bounce_buffers[NUM_VOLUMES][BOUNCE_SECTOR_SIZE*FAT_BOUNCE_SECTORS] STORAGE_ALIGN_ATTR;
 #define FAT_BOUNCE_BUFFER(bpb) \
     (fat_bounce_buffers[IF_MV_VOL((bpb)->volume)])
+/* The bounce buffers are shared by all threads, and read() and write() hold
+ * only the reader side of the file system lock: two threads can be in
+ * transfer() at once. Without this mutex a write copied its data into the
+ * buffer and waited for the storage driver while another thread read into
+ * the same buffer; the write then put the other thread's data on the disk
+ * (iPod 6G: cover art read by the database build ended up in a screen
+ * dump written at the same time). */
+static struct mutex fat_bounce_mutex SHAREDBSS_ATTR;
 #endif
 
 #define IS_FAT_SECTOR(bpb, sector) \
@@ -2489,6 +2497,7 @@ static long transfer(struct bpb *fat_bpb, sector_t start, long count,
 #ifdef STORAGE_NEEDS_BOUNCE_BUFFER
     if(UNLIKELY(STORAGE_OVERLAP((uintptr_t)buf))) {
         void* xfer_buf = FAT_BOUNCE_BUFFER(fat_bpb);
+        mutex_lock(&fat_bounce_mutex);
         while(count > 0) {
             int xfer_count = MIN(count*LOG_SECTOR_SIZE(fat_bpb), (FAT_BOUNCE_SECTORS * BOUNCE_SECTOR_SIZE)) / LOG_SECTOR_SIZE(fat_bpb);
 
@@ -2509,6 +2518,7 @@ static long transfer(struct bpb *fat_bpb, sector_t start, long count,
             start += xfer_count;
             count -= xfer_count;
         }
+        mutex_unlock(&fat_bounce_mutex);
     } else {
 #endif
         if(write) {
@@ -3065,6 +3075,9 @@ void fat_empty_fat_direntry(struct fat_direntry *entry)
 
 void fat_init(void)
 {
+#ifdef STORAGE_NEEDS_BOUNCE_BUFFER
+    mutex_init(&fat_bounce_mutex);
+#endif
     dc_lock_cache();
 
     /* mark the possible volumes as not mounted */

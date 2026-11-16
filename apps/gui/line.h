@@ -45,6 +45,10 @@ enum line_styles {
     STYLE_GRADIENT   = 0x08,
     /* Modifier for the text color, which will be taken from line_desc.text_color */
     STYLE_COLORED    = 0x10,
+#ifdef IPOD_6G
+    /* Modifier for STYLE_GRADIENT: a glossy bar, see style_line() */
+    STYLE_GLOSS      = 0x20,
+#endif
     /* These are used internally */
     _STYLE_DECO_MASK = 0x0f,
     _STYLE_MODE_MASK = 0x7F,
@@ -76,6 +80,11 @@ struct line_desc {
     /* height of the line separator (in pixels). 0 to disable drawing
      * of the separator */
     int8_t separator_height;
+#ifdef IPOD_6G
+    /* If > 0, a gradient spans deco_height pixels and this line starts
+     * deco_offset pixels into it: one text line of a taller list row. */
+    int16_t deco_height, deco_offset;
+#endif
 };
 
 /* default initializer, can be used for static initialitation also.

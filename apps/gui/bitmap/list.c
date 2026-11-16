@@ -45,6 +45,161 @@
 
 #define ICON_PADDING 1
 #define ICON_PADDING_S "1"
+#ifdef IPOD_6G
+#include "albumart_list.h"
+/* Lists on the main screen look like those of the original iPod firmware.
+ * Rows and selection bars are square and span the whole list viewport,
+ * which the theme places at the screen edges. A viewport at the left screen
+ * edge keeps the content LIST_EDGE_INSET pixels from both of its ends
+ * (setting "list edge inset" of the theme cfg, else 0).
+ * The scrollbar lies on the list, in a strip at its edge: the text viewport
+ * leaves the strip out, so scrolling text never covers the knob, and each
+ * row continues its background into the strip under the semi-transparent
+ * knob (gui_scrollbar_draw_overlay()). The right strip without a scrollbar
+ * is LIST_EDGE_INSET wide and keeps the text away from the edge.
+ * Album rows: the cover fills the row height at the left end of the row, the
+ * selection bar starts right of it and both text lines follow ALBUM_TEXT_GAP
+ * pixels after it. */
+#define LIST_EDGE_INSET (global_settings.list_edge_inset)
+#define ALBUM_TEXT_GAP 8
+
+/* Rows that open another level end in an arrow if the theme asks for it
+ * (setting "list arrows"): a chevron LIST_ARROW_W x LIST_ARROW_H, its middle
+ * LIST_ARROW_CENTER pixels from the right end of the row. The text ends
+ * LIST_ARROW_RESERVE pixels from there. */
+#define LIST_ARROW_W 6
+#define LIST_ARROW_H 10
+#define LIST_ARROW_CENTER 12
+#define LIST_ARROW_RESERVE 21
+/* 4 bit alpha, 0 opaque .. 15 invisible, the first pixel in the lower
+ * nibble: stroke 1.8 px with round ends, 16 x 16 supersampled */
+static const unsigned char list_arrow_mask[LIST_ARROW_H * LIST_ARROW_W / 2]
+    __attribute__((aligned(4))) =
+{
+    0x43, 0xfe, 0xff,
+    0x04, 0xe4, 0xff,
+    0x4e, 0x30, 0xfe,
+    0xff, 0x05, 0xe3,
+    0xff, 0x5f, 0x30,
+    0xff, 0x5f, 0x30,
+    0xff, 0x05, 0xe3,
+    0x4e, 0x30, 0xfe,
+    0x04, 0xe4, 0xff,
+    0x43, 0xfe, 0xff,
+};
+/* Marks at the end of rows (callback_item_mark, enum list_item_mark), from
+ * tools/ipod6g_list_marks.py: the speaker at the playing track in the arrow
+ * column, the dot at unheard podcasts and audiobooks there or, in rows with
+ * an arrow, LIST_MARK_BESIDE_ARROW pixels from the right end. Album rows of
+ * a list with marks end LIST_MARK_ALBUM_RESERVE pixels from it. */
+#define LIST_SPEAKER_W 14
+#define LIST_SPEAKER_H 12
+#define LIST_DOT_W 8
+#define LIST_DOT_H 8
+#define LIST_MARK_BESIDE_ARROW 26
+#define LIST_MARK_ALBUM_RESERVE 35
+static const unsigned char list_speaker_mask[LIST_SPEAKER_H * LIST_SPEAKER_W / 2]
+    __attribute__((aligned(4))) =
+{
+    0xff, 0xff, 0xff, 0xff, 0xff, 0x56, 0xff,
+    0xff, 0xff, 0xf7, 0xff, 0xdf, 0x1d, 0xfa,
+    0xff, 0x7f, 0xf3, 0xff, 0x28, 0x8e, 0xf2,
+    0xff, 0x0a, 0xf3, 0xbf, 0x2f, 0xe8, 0xb0,
+    0x27, 0x00, 0xf3, 0x1b, 0x8e, 0xf3, 0x84,
+    0x06, 0x00, 0xf3, 0x2f, 0xca, 0xf0, 0x66,
+    0x06, 0x00, 0xf3, 0x2f, 0xca, 0xf0, 0x66,
+    0x27, 0x00, 0xf3, 0x1b, 0x8e, 0xf3, 0x84,
+    0xff, 0x0a, 0xf3, 0xbf, 0x2f, 0xe8, 0xb0,
+    0xff, 0x7f, 0xf3, 0xff, 0x28, 0x8e, 0xf2,
+    0xff, 0xff, 0xf7, 0xff, 0xdf, 0x1d, 0xfa,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0x56, 0xff,
+};
+static const unsigned char list_dot_mask[LIST_DOT_H * LIST_DOT_W / 2]
+    __attribute__((aligned(4))) =
+{
+    0xff, 0x59, 0x95, 0xff,
+    0x5f, 0x00, 0x00, 0xf5,
+    0x09, 0x00, 0x00, 0x90,
+    0x05, 0x00, 0x00, 0x50,
+    0x05, 0x00, 0x00, 0x50,
+    0x09, 0x00, 0x00, 0x90,
+    0x5f, 0x00, 0x00, 0xf5,
+    0xff, 0x59, 0x95, 0xff,
+};
+/* Values of settings stand right in their rows (callback_get_item_value),
+ * LIST_VALUE_GAP pixels after the end of the name. The name of such a row
+ * is written into a narrower viewport; value_sel_vp is the one of the
+ * selected row, which keeps scrolling after list_draw(). */
+#define LIST_VALUE_GAP 8
+static struct viewport value_sel_vp, value_row_vp, value_vp;
+
+extern void lcd_alpha_bitmap_part(const unsigned char *src, int src_x,
+                                  int src_y, int stride, int x, int y,
+                                  int width, int height);
+
+/* the colours of artists, values and arrows: those of the theme cfg, else
+ * its foreground colour */
+static unsigned list_theme_color(int colour)
+{
+    return colour == LIST_COLOR_FROM_THEME ? (unsigned)global_settings.fg_color
+                                           : (unsigned)colour;
+}
+
+/* The scrollbar strip as drawn without the knob. The knob fades out after
+ * scrolling (gui_synclist_scrollbar_fade()); list_scrollbar_update() then
+ * redraws only the strip from here, since drawing the whole list again
+ * would restart the scrolling text of the selected row. */
+#define SB_SAVED_WIDTH 40
+static fb_data sb_saved[SB_SAVED_WIDTH * LCD_HEIGHT];
+static struct gui_synclist *sb_saved_list; /* NULL if nothing is saved */
+static struct viewport sb_saved_vp;
+static int sb_saved_items, sb_saved_min, sb_saved_max;
+static bool sb_saved_right;
+static int sb_drawn_fade;
+
+/* Copies the strip of sb_saved_vp (the current viewport) to sb_saved, or
+ * back to the screen */
+static void sb_saved_copy(bool save)
+{
+    for (int y = 0; y < sb_saved_vp.height; y++)
+    {
+        for (int x = 0; x < sb_saved_vp.width; x++)
+        {
+            fb_data *pixel = FBADDR(sb_saved_vp.x + x, sb_saved_vp.y + y);
+            fb_data *saved = &sb_saved[y * SB_SAVED_WIDTH + x];
+            if (save)
+                *saved = *pixel;
+            else
+                *pixel = *saved;
+        }
+    }
+}
+
+/* Draws the knob of the strip in sb_saved_vp at the fade step of list now,
+ * see list.h */
+static void sb_saved_draw_knob(struct screen *display,
+                               struct gui_synclist *list)
+{
+    sb_drawn_fade = gui_synclist_scrollbar_fade(list, NULL);
+    gui_scrollbar_draw_overlay(display, 0, 0, sb_saved_vp.width,
+                               sb_saved_vp.height, sb_saved_items,
+                               sb_saved_min, sb_saved_max, sb_saved_right,
+                               sb_drawn_fade);
+}
+
+void list_scrollbar_update(struct gui_synclist *list)
+{
+    if (list != sb_saved_list ||
+        gui_synclist_scrollbar_fade(list, NULL) == sb_drawn_fade)
+        return;
+    struct screen *display = &screens[SCREEN_MAIN];
+    struct viewport *last = display->set_viewport(&sb_saved_vp);
+    sb_saved_copy(false);
+    sb_saved_draw_knob(display, list);
+    display->update_viewport();
+    display->set_viewport(last);
+}
+#endif
 
 #ifdef HAVE_TOUCHSCREEN
 /* used in gui_synclist->scroll_mode */
@@ -72,6 +227,10 @@ void gui_synclist_scroll_stop(struct gui_synclist *lists)
     {
         screens[i].scroll_stop_viewport(&list_text[i]);
         screens[i].scroll_stop_viewport(&title_text[i]);
+#ifdef IPOD_6G
+        if (i == SCREEN_MAIN)
+            screens[i].scroll_stop_viewport(&value_sel_vp);
+#endif
         screens[i].scroll_stop_viewport(lists->parent[i]);
     }
 }
@@ -204,6 +363,22 @@ void list_draw(struct screen *display, struct gui_synclist *list)
     const bool scrollbar_in_right = (list->scrollbar == SCROLLBAR_RIGHT);
     const bool show_cursor = (list->cursor_style == SYNCLIST_CURSOR_NOSTYLE);
     const bool have_icons = list->callback_get_item_icon && list->show_icons;
+#ifdef IPOD_6G
+    const bool album_rows = (screen == SCREEN_MAIN) &&
+        list->callback_draw_albumart;
+    /* row ends left out of list_text_vp, see LIST_EDGE_INSET */
+    struct viewport strips[2];
+    int nb_strips = 0;
+    struct viewport *right_strip = NULL;
+    const bool row_arrows = (screen == SCREEN_MAIN) &&
+        global_settings.list_arrows && list->callback_item_opens;
+    const bool row_values = (screen == SCREEN_MAIN) && !album_rows &&
+        list->callback_get_item_value;
+    /* the scrollbar, drawn on top of the rows */
+    struct viewport sb_vp;
+    bool sb_overlay = false;
+    int sb_items = 0, sb_min = 0, sb_max = 0;
+#endif
 
     struct viewport *parent = (list->parent[screen]);
     struct line_desc linedes = LINE_DESC_DEFINIT;
@@ -220,6 +395,10 @@ void list_draw(struct screen *display, struct gui_synclist *list)
     display->clear_viewport();
     if (!list->scroll_all)
         display->scroll_stop_viewport(list_text_vp);
+#ifdef IPOD_6G
+    if (screen == SCREEN_MAIN)
+        display->scroll_stop_viewport(&value_sel_vp);
+#endif
     *list_text_vp = *parent;
     if ((show_title = draw_title(display, list, callback_draw_item)))
     {
@@ -273,24 +452,29 @@ void list_draw(struct screen *display, struct gui_synclist *list)
 #endif
 
     /* draw the scrollbar if its needed */
+    int sb_width = SCROLLBAR_WIDTH;
+#ifdef IPOD_6G
+    /* the knob is as wide as a classic scrollbar (the setting less one) */
+    if (screen == SCREEN_MAIN)
+        sb_width = SCROLLBAR_WIDTH - 1 + GUI_SCROLLBAR_OVERLAY_GAP;
+#endif
     if (list->scrollbar != SCROLLBAR_OFF)
     {
         /* if the scrollbar is shown the text viewport needs to shrink */
         if (nb_lines < list->nb_items)
         {
             struct viewport vp = *list_text_vp;
-            vp.width = SCROLLBAR_WIDTH;
+            vp.width = sb_width;
 #ifndef HAVE_TOUCHSCREEN
             /* touchscreens must use full viewport height
              * due to pixelwise rendering */
             vp.height = linedes.height * nb_lines;
 #endif
-            list_text_vp->width -= SCROLLBAR_WIDTH;
+            list_text_vp->width -= sb_width;
             if (scrollbar_in_right)
                 vp.x += list_text_vp->width;
             else /* left */
-                list_text_vp->x += SCROLLBAR_WIDTH;
-            struct viewport *last = display->set_viewport(&vp);
+                list_text_vp->x += sb_width;
 
 #ifndef HAVE_TOUCHSCREEN
             /* button targets go itemwise */
@@ -303,17 +487,70 @@ void list_draw(struct screen *display, struct gui_synclist *list)
             int scrollbar_min = list->y_pos;
             int scrollbar_max = list->y_pos + list_text_vp->height;
 #endif
-            gui_scrollbar_draw(display,
-                    (scrollbar_in_left? 0: 1), 0, SCROLLBAR_WIDTH-1, vp.height,
-                    scrollbar_items, scrollbar_min, scrollbar_max, VERTICAL);
-            display->set_viewport(last);
+#ifdef IPOD_6G
+            if (screen == SCREEN_MAIN)
+            {
+                sb_vp = vp;
+                sb_overlay = true;
+                sb_items = scrollbar_items;
+                sb_min = scrollbar_min;
+                sb_max = scrollbar_max;
+            }
+            else
+#endif
+            {
+                struct viewport *last = display->set_viewport(&vp);
+                gui_scrollbar_draw(display,
+                        (scrollbar_in_left? 0: 1), 0, SCROLLBAR_WIDTH-1,
+                        vp.height, scrollbar_items, scrollbar_min,
+                        scrollbar_max, VERTICAL);
+                display->set_viewport(last);
+            }
         }
         /* shift everything a bit in relation to the title */
         else if (!VP_IS_RTL(list_text_vp) && scrollbar_in_left)
-            indent += SCROLLBAR_WIDTH;
+            indent += sb_width;
         else if (VP_IS_RTL(list_text_vp) && scrollbar_in_right)
-            indent += SCROLLBAR_WIDTH;
+            indent += sb_width;
     }
+
+#ifdef IPOD_6G
+    if (screen == SCREEN_MAIN)
+    {
+        const int edge = (parent->x == 0) ? LIST_EDGE_INSET : 0;
+        int right_end = row_arrows ? LIST_ARROW_RESERVE : edge;
+        if (list->callback_item_mark)
+            right_end = album_rows ? LIST_MARK_ALBUM_RESERVE
+                                   : MAX(right_end, LIST_ARROW_RESERVE);
+        /* not in viewports too narrow for it, e.g. a hidden UI viewport */
+        if (list_text_vp->width <= 2 * right_end)
+            right_end = 0;
+        int left = list_text_vp->x - parent->x;
+        int right = parent->x + parent->width -
+                    (list_text_vp->x + list_text_vp->width);
+        if (right < right_end)
+        {
+            list_text_vp->width -= right_end - right;
+            right = right_end;
+        }
+        if (left + indent < edge && list_text_vp->width > 2 * edge)
+            indent = edge - left;
+        if (left > 0)
+        {
+            strips[nb_strips] = *list_text_vp;
+            strips[nb_strips].x = parent->x;
+            strips[nb_strips++].width = left;
+        }
+        if (right > 0)
+        {
+            strips[nb_strips] = *list_text_vp;
+            strips[nb_strips].x = list_text_vp->x + list_text_vp->width;
+            strips[nb_strips].width = right;
+            right_strip = &strips[nb_strips++];
+        }
+    }
+    const int album_text_x = ALBUMART_LIST_SIZE + ALBUM_TEXT_GAP;
+#endif
 
     display->set_viewport(list_text_vp);
     int icon_w = list_icon_width(screen);
@@ -362,7 +599,12 @@ void list_draw(struct screen *display, struct gui_synclist *list)
         /* position the string at the correct offset place */
         int item_width,h;
         display->getstringsize(entry_name, &item_width, &h);
-        item_offset = gui_list_get_item_offset(list, item_width, indent + (list->show_icons ? icon_w : 0),
+        int text_pos = indent + (list->show_icons ? icon_w : 0);
+#ifdef IPOD_6G
+        if (album_rows)
+            text_pos = album_text_x;
+#endif
+        item_offset = gui_list_get_item_offset(list, item_width, text_pos,
                 display, list_text_vp);
 
         /* draw the selected line */
@@ -405,10 +647,18 @@ void list_draw(struct screen *display, struct gui_synclist *list)
                 linedes.text_color = global_settings.lst_color;
                 linedes.line_color = global_settings.lss_color;
             }
-            else if (list->cursor_style == SYNCLIST_CURSOR_GRADIENT)
+            else if (list->cursor_style == SYNCLIST_CURSOR_GRADIENT
+#ifdef IPOD_6G
+                     || list->cursor_style == SYNCLIST_CURSOR_GLOSS
+#endif
+                    )
             {
                 /* Display gradient line selector */
                 style = STYLE_GRADIENT;
+#ifdef IPOD_6G
+                if (list->cursor_style == SYNCLIST_CURSOR_GLOSS)
+                    style |= STYLE_GLOSS;
+#endif
                 linedes.text_color = global_settings.lst_color;
                 linedes.line_color = global_settings.lss_color;
                 linedes.line_end_color = global_settings.lse_color;
@@ -444,8 +694,202 @@ void list_draw(struct screen *display, struct gui_synclist *list)
         list_info.dsp_text = entry_name;
         list_info.item_offset = item_offset;
 
-        callback_draw_item(&list_info);
+#ifdef IPOD_6G
+        char value_buf[64];
+        const char *value = row_values ?
+            list->callback_get_item_value(i, list->data, value_buf,
+                                          sizeof(value_buf)) : NULL;
+        int value_w = 0;
+        if (value && *value)
+        {
+            display->getstringsize(value, &value_w, NULL);
+            value_w = MIN(value_w + LIST_VALUE_GAP, list_text_vp->width / 2);
+        }
+        if (value_w > 0)
+        {
+            /* the name in a viewport that ends before the value */
+            struct viewport *row_vp = is_selected ? &value_sel_vp
+                                                  : &value_row_vp;
+            *row_vp = *list_text_vp;
+            row_vp->width -= value_w;
+            if (!is_selected)
+                linedes.scroll = false;
+            display->set_viewport(row_vp);
+            list_info.vp = row_vp;
+            callback_draw_item(&list_info);
+            list_info.vp = list_text_vp;
+            /* the value, right-aligned, in the colour of second lines */
+            struct line_desc value_line = linedes;
+            value_line.scroll = false;
+            if (!(is_selected &&
+                  (linedes.style & (STYLE_COLORBAR | STYLE_GRADIENT))))
+            {
+                value_line.style |= STYLE_COLORED;
+                value_line.text_color = list_theme_color(
+                    global_settings.list_value_color != LIST_COLOR_FROM_THEME ?
+                    global_settings.list_value_color :
+                    global_settings.list_secondary_color);
+            }
+            value_vp = *list_text_vp;
+            value_vp.x += row_vp->width;
+            value_vp.width = value_w;
+            display->set_viewport(&value_vp);
+            int w;
+            display->getstringsize(value, &w, NULL);
+            display->put_line(0, list_info.y, &value_line, "$*s$t",
+                              MAX(value_w - w, 0), value);
+            display->set_viewport(list_text_vp);
+        }
+        else if (album_rows)
+        {
+            /* The row background or selection bar right of the cover first,
+             * then both text lines and the cover. The text keeps its gap to
+             * the cover also when indent shifts other lists. */
+            line_indent -= indent;
+            list_info.item_indent = line_indent;
+            list_info.have_icons = false;
+            const char *title = list_info.dsp_text;
+            list_info.dsp_text = "";
+            list_info.x = ALBUMART_LIST_SIZE;
+            callback_draw_item(&list_info);
+            list_info.dsp_text = title;
+            list_info.x = album_text_x;
+            const char *albumartist = list->callback_get_albumartist ?
+                list->callback_get_albumartist(i, list->data) : NULL;
+            if (albumartist && *albumartist)
+            {
+                struct line_desc text_line = linedes;
+                int text_y = list_info.y +
+                    (linedes.height - 2 * display->getcharheight()) / 2;
+                text_line.height = display->getcharheight();
+                text_line.separator_height = 0;
+                /* The text scroller redraws only this title line. It must
+                 * repaint the row background before moving the glyphs, or
+                 * the old letters remain as a dark trail. */
+                text_line.style = linedes.style;
+                /* a gradient continues the one of the whole row */
+                text_line.deco_height = linedes.height;
+                text_line.deco_offset = text_y - list_info.y;
+                display->put_line(list_info.x, text_y, &text_line,
+                                  "$*s$*t", line_indent, item_offset, title);
+                text_line.style = STYLE_NONE | STYLE_COLORED;
+                /* On a colour selector bar the artist keeps the title's
+                 * selector text colour (text_line is a copy of linedes). */
+                if (!(is_selected &&
+                      (linedes.style & (STYLE_COLORBAR | STYLE_GRADIENT))))
+                    text_line.text_color =
+                        list_theme_color(global_settings.list_secondary_color);
+                text_line.scroll = false;
+                /* in the theme's second font if it has one (regular
+                 * instead of bold), on the baseline of the list font */
+                int artist_y = text_y + display->getcharheight();
+                int list_font = list_text_vp->font;
+                int sec = list_secondary_font();
+                if (sec >= 0 && font_get(sec)->height > 0)
+                {
+                    artist_y += font_get(list_font)->ascent -
+                                font_get(sec)->ascent;
+                    list_text_vp->font = sec;
+                    text_line.height = font_get(sec)->height;
+                }
+                display->put_line(list_info.x, artist_y,
+                                  &text_line, "$*s$t", line_indent,
+                                  albumartist);
+                list_text_vp->font = list_font;
+            }
+            else
+                callback_draw_item(&list_info);
+            list->callback_draw_albumart(i, list->data, 0, list_info.y +
+                (linedes.height - ALBUMART_LIST_SIZE) / 2);
+            list_info.x = 0;
+        }
+        else
+#endif
+            callback_draw_item(&list_info);
+#ifdef IPOD_6G
+        /* continue the row background into the strips */
+        for (int k = 0; k < nb_strips; k++)
+        {
+            display->set_viewport(&strips[k]);
+            display->put_line(0, list_info.y, &linedes, "");
+        }
+        if (right_strip && row_arrows &&
+            list->callback_item_opens(i, list->data) &&
+            right_strip->width >= LIST_ARROW_CENTER + LIST_ARROW_W / 2)
+        {
+            display->set_viewport(right_strip);
+            unsigned fg = display->get_foreground();
+            display->set_foreground(
+                (is_selected && (linedes.style & (STYLE_COLORBAR |
+                                                  STYLE_GRADIENT))) ?
+                (unsigned)global_settings.lst_color :
+                list_theme_color(global_settings.list_arrow_color));
+            display->set_drawmode(DRMODE_FG);
+            lcd_alpha_bitmap_part(list_arrow_mask, 0, 0, LIST_ARROW_W,
+                right_strip->width - LIST_ARROW_CENTER - LIST_ARROW_W / 2,
+                list_info.y + (linedes.height - LIST_ARROW_H) / 2,
+                LIST_ARROW_W, LIST_ARROW_H);
+            display->set_drawmode(DRMODE_SOLID);
+            display->set_foreground(fg);
+        }
+        int mark = (right_strip && list->callback_item_mark) ?
+            list->callback_item_mark(i, list->data) : LIST_MARK_NONE;
+        if (mark != LIST_MARK_NONE)
+        {
+            const bool speaker = (mark == LIST_MARK_PLAYING);
+            const int w = speaker ? LIST_SPEAKER_W : LIST_DOT_W;
+            const int h = speaker ? LIST_SPEAKER_H : LIST_DOT_H;
+            const int centre = (row_arrows &&
+                                list->callback_item_opens(i, list->data)) ?
+                LIST_MARK_BESIDE_ARROW : LIST_ARROW_CENTER;
+            unsigned colour;
+            if (is_selected && (linedes.style & (STYLE_COLORBAR |
+                                                 STYLE_GRADIENT)))
+                colour = global_settings.lst_color;
+            else if (speaker)
+                colour = list_theme_color(global_settings.list_arrow_color);
+            else /* the accent: the dark blue of the selection bar */
+                colour = global_settings.lsg_bottom_color ==
+                         LIST_COLOR_FROM_THEME ?
+                         (unsigned)global_settings.lse_color :
+                         (unsigned)global_settings.lsg_bottom_color;
+            if (right_strip->width >= centre + w / 2)
+            {
+                display->set_viewport(right_strip);
+                unsigned fg = display->get_foreground();
+                display->set_foreground(colour);
+                display->set_drawmode(DRMODE_FG);
+                lcd_alpha_bitmap_part(speaker ? list_speaker_mask
+                                              : list_dot_mask,
+                    0, 0, w, right_strip->width - centre - w / 2,
+                    list_info.y + (linedes.height - h) / 2, w, h);
+                display->set_drawmode(DRMODE_SOLID);
+                display->set_foreground(fg);
+            }
+        }
+        if (nb_strips)
+            display->set_viewport(list_text_vp);
+#endif
     }
+#ifdef IPOD_6G
+    if (screen == SCREEN_MAIN)
+        sb_saved_list = NULL;
+    if (sb_overlay)
+    {
+        display->set_viewport(&sb_vp);
+        sb_saved_vp = sb_vp;
+        sb_saved_items = sb_items;
+        sb_saved_min = sb_min;
+        sb_saved_max = sb_max;
+        sb_saved_right = !scrollbar_in_left;
+        if (sb_vp.width <= SB_SAVED_WIDTH && sb_vp.height <= LCD_HEIGHT)
+        {
+            sb_saved_copy(true);
+            sb_saved_list = list;
+        }
+        sb_saved_draw_knob(display, list);
+    }
+#endif
     display->set_viewport(last_vp);
 }
 

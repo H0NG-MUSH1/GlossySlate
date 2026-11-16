@@ -105,6 +105,13 @@ static struct buflib_callbacks shortcut_ops = {
     .move_callback = move_callback,
 };
 
+#ifdef IPOD_6G
+int shortcuts_get_count(void)
+{
+    return shortcut_count;
+}
+#endif
+
 static void reset_shortcuts(void)
 {
     int current_handle = first_handle;

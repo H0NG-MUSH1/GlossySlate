@@ -95,10 +95,10 @@
     *: "Rockbox"
   </source>
   <dest>
-    *: "Rockbox"
+    *: "iPod"
   </dest>
   <voice>
-    *: "Rockbox"
+    *: "iPod"
   </voice>
 </phrase>
 <phrase>
@@ -1798,6 +1798,23 @@
   </voice>
 </phrase>
 <phrase>
+  id: LANG_HEADSET_REMOTE_CONTROL
+  desc: Enable the iPod Classic wired headset remote
+  user: core
+  <source>
+    *: none
+    ipod6g: "Headset Remote Control"
+  </source>
+  <dest>
+    *: none
+    ipod6g: "Headset Remote Control"
+  </dest>
+  <voice>
+    *: none
+    ipod6g: "Headset Remote Control"
+  </voice>
+</phrase>
+<phrase>
   id: LANG_HEADPHONE_UNPLUG_RESUME
   desc: in pause_phones_menu.
   user: core
@@ -2162,6 +2179,34 @@
   </dest>
   <voice>
     *: "Update Now"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ALBUM_COVERS_UPDATE
+  desc: Start album cover cache update from database settings
+  user: core
+  <source>
+    *: "Update Album Covers"
+  </source>
+  <dest>
+    *: "Update Album Covers"
+  </dest>
+  <voice>
+    *: "Update Album Covers"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ALBUM_COVERS_UPDATE_STARTED
+  desc: Album cover update runs in the background
+  user: core
+  <source>
+    *: "Album cover update started"
+  </source>
+  <dest>
+    *: "Album cover update started"
+  </dest>
+  <voice>
+    *: "Album cover update started"
   </voice>
 </phrase>
 <phrase>
@@ -10457,13 +10502,13 @@
   desc: in sound settings
   user: core
   <source>
-    *: "Compressor"
+    *: "Dynamic Range Compressor"
   </source>
   <dest>
-    *: "Compressor"
+    *: "Dynamic Range Compressor"
   </dest>
   <voice>
-    *: "Compressor"
+    *: "Dynamic Range Compressor"
   </voice>
 </phrase>
 <phrase>
@@ -10536,13 +10581,13 @@
   desc: in sound settings
   user: core
   <source>
-    *: "Ratio"
+    *: "Compression Ratio"
   </source>
   <dest>
-    *: "Ratio"
+    *: "Compression Ratio"
   </dest>
   <voice>
-    *: "Ratio"
+    *: "Compression Ratio"
   </voice>
 </phrase>
 <phrase>
@@ -12154,13 +12199,13 @@
   desc: in sound_settings
   user: core
   <source>
-    *: "Maximum Volume Limit"
+    *: "Volume Limit"
   </source>
   <dest>
-    *: "Maximum Volume Limit"
+    *: "Volume Limit"
   </dest>
   <voice>
-    *: "Maximum Volume Limit"
+    *: "Volume Limit"
   </voice>
 </phrase>
 <phrase>
@@ -12182,13 +12227,13 @@
   desc: in sound settings
   user: core
   <source>
-    *: "Auditory Fatigue Reduction"
+    *: "Presence/Treble Attenuation"
   </source>
   <dest>
-    *: "Auditory Fatigue Reduction"
+    *: "Presence/Treble Attenuation"
   </dest>
   <voice>
-    *: "Auditory Fatigue Reduction"
+    *: "Presence/Treble Attenuation"
   </voice>
 </phrase>
 <phrase>
@@ -12196,13 +12241,13 @@
   desc: in the sound settings menu
   user: core
   <source>
-    *: "Haas Surround"
+    *: "Haas Stereo Widening"
   </source>
   <dest>
-    *: "Haas Surround"
+    *: "Haas Stereo Widening"
   </dest>
   <voice>
-    *: "Haas Surround"
+    *: "Haas Stereo Widening"
   </voice>
 </phrase>
 <phrase>
@@ -12210,13 +12255,13 @@
   desc: in sound settings
   user: core
   <source>
-    *: "f(x1)"
+    *: "Upper Bypass Frequency"
   </source>
   <dest>
-    *: "f(x1)"
+    *: "Upper Bypass Frequency"
   </dest>
   <voice>
-    *: "f(x1)"
+    *: "Upper Bypass Frequency"
   </voice>
 </phrase>
 <phrase>
@@ -12224,13 +12269,13 @@
   desc: in sound settings
   user: core
   <source>
-    *: "f(x2)"
+    *: "Lower Bypass Frequency"
   </source>
   <dest>
-    *: "f(x2)"
+    *: "Lower Bypass Frequency"
   </dest>
   <voice>
-    *: "f(x2)"
+    *: "Lower Bypass Frequency"
   </voice>
 </phrase>
 <phrase>
@@ -12238,13 +12283,13 @@
   desc: in sound settings
   user: core
   <source>
-    *: "SIDE ONLY"
+    *: "Process Side Channel Only"
   </source>
   <dest>
-    *: "SIDE ONLY"
+    *: "Process Side Channel Only"
   </dest>
   <voice>
-    *: "SIDE ONLY"
+    *: "Process Side Channel Only"
   </voice>
 </phrase>
 <phrase>
@@ -12252,13 +12297,13 @@
   desc: in sound settings
   user: core
   <source>
-    *: "Dry / Wet Mix"
+    *: "Dry/Wet Mix"
   </source>
   <dest>
-    *: "Dry / Wet Mix"
+    *: "Dry/Wet Mix"
   </dest>
   <voice>
-    *: "Dry / Wet Mix"
+    *: "Dry/Wet Mix"
   </voice>
 </phrase>
 <phrase>
@@ -17297,5 +17342,1342 @@
   <voice>
     *: none
     recording_remote: "remote recording screen skin"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PODCASTS
+  desc: in the main menu and the database: files below /Podcasts
+  user: core
+  <source>
+    *: "Podcasts"
+  </source>
+  <dest>
+    *: "Podcasts"
+  </dest>
+  <voice>
+    *: "Podcasts"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_AUDIOBOOKS
+  desc: in the main menu and the database: files below /Audiobooks
+  user: core
+  <source>
+    *: "Audiobooks"
+  </source>
+  <dest>
+    *: "Audiobooks"
+  </dest>
+  <voice>
+    *: "Audiobooks"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYER_SECOND_LINE
+  desc: in theme settings: second line in the players of the skins (iPod 6G)
+  user: core
+  <source>
+    *: "Second Line in Player"
+  </source>
+  <dest>
+    *: "Second Line in Player"
+  </dest>
+  <voice>
+    *: "Second Line in Player"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ALBUM_AND_ARTIST
+  desc: in theme settings: second line shows album and artist in turn
+  user: core
+  <source>
+    *: "Album and Artist"
+  </source>
+  <dest>
+    *: "Album and Artist"
+  </dest>
+  <voice>
+    *: "Album and Artist"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_ALBUMART_CORNERS
+  desc: in theme settings: corners of album art in the skins (iPod 6G)
+  user: core
+  <source>
+    *: "Album Art Corners"
+  </source>
+  <dest>
+    *: "Album Art Corners"
+  </dest>
+  <voice>
+    *: "Album Art Corners"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CORNERS_ROUNDED
+  desc: in theme settings: rounded album art corners
+  user: core
+  <source>
+    *: "Rounded"
+  </source>
+  <dest>
+    *: "Rounded"
+  </dest>
+  <voice>
+    *: "Rounded"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_CORNERS_SQUARE
+  desc: in theme settings: square album art corners
+  user: core
+  <source>
+    *: "Square"
+  </source>
+  <dest>
+    *: "Square"
+  </dest>
+  <voice>
+    *: "Square"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KEYLOCK
+  desc: in theme settings: key lock style of the skins
+  user: core
+  <source>
+    *: "Key Lock"
+  </source>
+  <dest>
+    *: "Key Lock"
+  </dest>
+  <voice>
+    *: "Key Lock"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KEYLOCK_SCREEN
+  desc: in theme settings: key lock shows a lock screen
+  user: core
+  <source>
+    *: "Lock Screen"
+  </source>
+  <dest>
+    *: "Lock Screen"
+  </dest>
+  <voice>
+    *: "Lock Screen"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_KEYLOCK_NORMAL
+  desc: in theme settings: key lock shows only the padlock
+  user: core
+  <source>
+    *: "Normal"
+  </source>
+  <dest>
+    *: "Normal"
+  </dest>
+  <voice>
+    *: "Normal"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SECOND_LINE_ALBUM
+  desc: in theme settings: second line in player shows the album
+  user: core
+  <source>
+    *: "Album only"
+  </source>
+  <dest>
+    *: "Album only"
+  </dest>
+  <voice>
+    *: "Album only"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_SECOND_LINE_ARTIST
+  desc: in theme settings: second line in player shows the artist
+  user: core
+  <source>
+    *: "Artist only"
+  </source>
+  <dest>
+    *: "Artist only"
+  </dest>
+  <voice>
+    *: "Artist only"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_INVERT_CURSOR_GLOSS
+  desc: in settings_menu: selector type with a gloss
+  user: core
+  <source>
+    *: "Bar (Gloss)"
+  </source>
+  <dest>
+    *: "Bar (Gloss)"
+  </dest>
+  <voice>
+    *: "Bar (Gloss)"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MARK_UNHEARD
+  desc: in the context menu of podcasts and audiobooks in the database
+  user: core
+  <source>
+    *: "Mark as Unheard"
+  </source>
+  <dest>
+    *: "Mark as Unheard"
+  </dest>
+  <voice>
+    *: "Mark as Unheard"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_POPUP_YES_HINT
+  desc: yes/no popup: the button that answers yes
+  user: core
+  <source>
+    *: "Center button"
+  </source>
+  <dest>
+    *: "Center button"
+  </dest>
+  <voice>
+    *: "Center button"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_POPUP_NO_HINT
+  desc: yes/no popup: the buttons that answer no
+  user: core
+  <source>
+    *: "Other button"
+  </source>
+  <dest>
+    *: "Other button"
+  </dest>
+  <voice>
+    *: "Other button"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_WEEKDAY_FULL_SUNDAY
+  desc: Full weekday name, for {weekday} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "Sunday"
+  </source>
+  <dest>
+    *: none
+    rtc: "Sunday"
+  </dest>
+  <voice>
+    *: none
+    rtc: "Sunday"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_WEEKDAY_FULL_MONDAY
+  desc: Full weekday name, for {weekday} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "Monday"
+  </source>
+  <dest>
+    *: none
+    rtc: "Monday"
+  </dest>
+  <voice>
+    *: none
+    rtc: "Monday"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_WEEKDAY_FULL_TUESDAY
+  desc: Full weekday name, for {weekday} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "Tuesday"
+  </source>
+  <dest>
+    *: none
+    rtc: "Tuesday"
+  </dest>
+  <voice>
+    *: none
+    rtc: "Tuesday"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_WEEKDAY_FULL_WEDNESDAY
+  desc: Full weekday name, for {weekday} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "Wednesday"
+  </source>
+  <dest>
+    *: none
+    rtc: "Wednesday"
+  </dest>
+  <voice>
+    *: none
+    rtc: "Wednesday"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_WEEKDAY_FULL_THURSDAY
+  desc: Full weekday name, for {weekday} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "Thursday"
+  </source>
+  <dest>
+    *: none
+    rtc: "Thursday"
+  </dest>
+  <voice>
+    *: none
+    rtc: "Thursday"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_WEEKDAY_FULL_FRIDAY
+  desc: Full weekday name, for {weekday} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "Friday"
+  </source>
+  <dest>
+    *: none
+    rtc: "Friday"
+  </dest>
+  <voice>
+    *: none
+    rtc: "Friday"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_WEEKDAY_FULL_SATURDAY
+  desc: Full weekday name, for {weekday} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "Saturday"
+  </source>
+  <dest>
+    *: none
+    rtc: "Saturday"
+  </dest>
+  <voice>
+    *: none
+    rtc: "Saturday"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_JANUARY
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "January"
+  </source>
+  <dest>
+    *: none
+    rtc: "January"
+  </dest>
+  <voice>
+    *: none
+    rtc: "January"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_FEBRUARY
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "February"
+  </source>
+  <dest>
+    *: none
+    rtc: "February"
+  </dest>
+  <voice>
+    *: none
+    rtc: "February"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_MARCH
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "March"
+  </source>
+  <dest>
+    *: none
+    rtc: "March"
+  </dest>
+  <voice>
+    *: none
+    rtc: "March"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_APRIL
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "April"
+  </source>
+  <dest>
+    *: none
+    rtc: "April"
+  </dest>
+  <voice>
+    *: none
+    rtc: "April"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_MAY
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "May"
+  </source>
+  <dest>
+    *: none
+    rtc: "May"
+  </dest>
+  <voice>
+    *: none
+    rtc: "May"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_JUNE
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "June"
+  </source>
+  <dest>
+    *: none
+    rtc: "June"
+  </dest>
+  <voice>
+    *: none
+    rtc: "June"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_JULY
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "July"
+  </source>
+  <dest>
+    *: none
+    rtc: "July"
+  </dest>
+  <voice>
+    *: none
+    rtc: "July"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_AUGUST
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "August"
+  </source>
+  <dest>
+    *: none
+    rtc: "August"
+  </dest>
+  <voice>
+    *: none
+    rtc: "August"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_SEPTEMBER
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "September"
+  </source>
+  <dest>
+    *: none
+    rtc: "September"
+  </dest>
+  <voice>
+    *: none
+    rtc: "September"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_OCTOBER
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "October"
+  </source>
+  <dest>
+    *: none
+    rtc: "October"
+  </dest>
+  <voice>
+    *: none
+    rtc: "October"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_NOVEMBER
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "November"
+  </source>
+  <dest>
+    *: none
+    rtc: "November"
+  </dest>
+  <voice>
+    *: none
+    rtc: "November"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_MONTH_FULL_DECEMBER
+  desc: Full month name, for {month} in the date formats
+  user: core
+  <source>
+    *: none
+    rtc: "December"
+  </source>
+  <dest>
+    *: none
+    rtc: "December"
+  </dest>
+  <voice>
+    *: none
+    rtc: "December"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_DATE_FORMAT_LONG
+  desc: Long date without year, e.g. on the lock screen. Placeholders: {weekday} {wd} (short weekday), {day} (1-31), {month} {mon} (short month), {year}. Shown by the %cD skin tag; keep the braces
+  user: core
+  <source>
+    *: none
+    rtc: "{weekday}, {day} {month}"
+  </source>
+  <dest>
+    *: none
+    rtc: "{weekday}, {day} {month}"
+  </dest>
+  <voice>
+    *: none
+    rtc: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_DATE_FORMAT_SHORT
+  desc: Short date with year, e.g. on the home screen. Placeholders: {weekday} {wd} (short weekday), {day} (1-31), {month} {mon} (short month), {year}. Shown by the %cD skin tag; keep the braces
+  user: core
+  <source>
+    *: none
+    rtc: "{day} {mon} {year}"
+  </source>
+  <dest>
+    *: none
+    rtc: "{day} {mon} {year}"
+  </dest>
+  <voice>
+    *: none
+    rtc: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NO_MUSIC
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: none there
+  user: core
+  <source>
+    *: "No music"
+  </source>
+  <dest>
+    *: "No music"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_ONE_ALBUM
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: exactly one
+  user: core
+  <source>
+    *: "1 album"
+  </source>
+  <dest>
+    *: "1 album"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_COUNT_ALBUMS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: word after a number of two or more
+  user: core
+  <source>
+    *: "albums"
+  </source>
+  <dest>
+    *: "albums"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NO_RECORDINGS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: none there
+  user: core
+  <source>
+    *: "No recordings"
+  </source>
+  <dest>
+    *: "No recordings"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_ONE_RECORDING
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: exactly one
+  user: core
+  <source>
+    *: "1 recording"
+  </source>
+  <dest>
+    *: "1 recording"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_COUNT_RECORDINGS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: word after a number of two or more
+  user: core
+  <source>
+    *: "recordings"
+  </source>
+  <dest>
+    *: "recordings"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NO_PLAYLISTS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: none there
+  user: core
+  <source>
+    *: "No playlists"
+  </source>
+  <dest>
+    *: "No playlists"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_ONE_PLAYLIST
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: exactly one
+  user: core
+  <source>
+    *: "1 playlist"
+  </source>
+  <dest>
+    *: "1 playlist"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_COUNT_PLAYLISTS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: word after a number of two or more
+  user: core
+  <source>
+    *: "playlists"
+  </source>
+  <dest>
+    *: "playlists"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NO_SHORTCUTS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: none there
+  user: core
+  <source>
+    *: "No shortcuts"
+  </source>
+  <dest>
+    *: "No shortcuts"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_ONE_SHORTCUT
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: exactly one
+  user: core
+  <source>
+    *: "1 shortcut"
+  </source>
+  <dest>
+    *: "1 shortcut"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_COUNT_SHORTCUTS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: word after a number of two or more
+  user: core
+  <source>
+    *: "shortcuts"
+  </source>
+  <dest>
+    *: "shortcuts"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NO_BOOKMARKS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: none there
+  user: core
+  <source>
+    *: "No bookmarks"
+  </source>
+  <dest>
+    *: "No bookmarks"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_ONE_BOOKMARK
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: exactly one
+  user: core
+  <source>
+    *: "1 bookmark"
+  </source>
+  <dest>
+    *: "1 bookmark"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_COUNT_BOOKMARKS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: word after a number of two or more
+  user: core
+  <source>
+    *: "bookmarks"
+  </source>
+  <dest>
+    *: "bookmarks"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NO_PODCASTS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: none there
+  user: core
+  <source>
+    *: "No podcasts"
+  </source>
+  <dest>
+    *: "No podcasts"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_ONE_PODCAST
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: exactly one
+  user: core
+  <source>
+    *: "1 podcast"
+  </source>
+  <dest>
+    *: "1 podcast"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_COUNT_PODCASTS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: word after a number of two or more
+  user: core
+  <source>
+    *: "podcasts"
+  </source>
+  <dest>
+    *: "podcasts"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NO_AUDIOBOOKS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: none there
+  user: core
+  <source>
+    *: "No audiobooks"
+  </source>
+  <dest>
+    *: "No audiobooks"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_ONE_AUDIOBOOK
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: exactly one
+  user: core
+  <source>
+    *: "1 audiobook"
+  </source>
+  <dest>
+    *: "1 audiobook"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_COUNT_AUDIOBOOKS
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: word after a number of two or more
+  user: core
+  <source>
+    *: "audiobooks"
+  </source>
+  <dest>
+    *: "audiobooks"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NOTHING_PLAYING
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. sidebar of the main menu: Now Playing while nothing plays
+  user: core
+  <source>
+    *: "Nothing playing"
+  </source>
+  <dest>
+    *: "Nothing playing"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_RANDOM_ORDER
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. settings sidebar: shuffle is on
+  user: core
+  <source>
+    *: "Random order"
+  </source>
+  <dest>
+    *: "Random order"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_IN_ORDER
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. settings sidebar: shuffle is off
+  user: core
+  <source>
+    *: "In order"
+  </source>
+  <dest>
+    *: "In order"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_PLAY_ONCE
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. settings sidebar: repeat off
+  user: core
+  <source>
+    *: "Play once"
+  </source>
+  <dest>
+    *: "Play once"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_REPEAT_LIST
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. settings sidebar: repeat all
+  user: core
+  <source>
+    *: "Repeat list"
+  </source>
+  <dest>
+    *: "Repeat list"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_REPEAT_TRACK
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. settings sidebar: repeat one
+  user: core
+  <source>
+    *: "Repeat track"
+  </source>
+  <dest>
+    *: "Repeat track"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_REPEAT_SHUFFLED
+  desc: deprecated
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_REPEAT_AB
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. settings sidebar: repeat A-B
+  user: core
+  <source>
+    *: "Repeat A-B"
+  </source>
+  <dest>
+    *: "Repeat A-B"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_LEVEL
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. brightness level before its number, e.g. "Level 9"
+  user: core
+  <source>
+    *: "Level"
+  </source>
+  <dest>
+    *: "Level"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_SCREEN_UNCHANGED
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. key lock preview: the normal key lock keeps the screen
+  user: core
+  <source>
+    *: "Screen unchanged"
+  </source>
+  <dest>
+    *: "Screen unchanged"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_CLOCK_AND_TITLE
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. key lock preview: the lock screen shows clock and title
+  user: core
+  <source>
+    *: "Clock and title"
+  </source>
+  <dest>
+    *: "Clock and title"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_USB_CONNECTED
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. USB screen: heading while connected
+  user: core
+  <source>
+    *: "Connected"
+  </source>
+  <dest>
+    *: "Connected"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_USB_DO_NOT_DISCONNECT
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. USB screen: first line while connected
+  user: core
+  <source>
+    *: "Do not disconnect."
+  </source>
+  <dest>
+    *: "Do not disconnect."
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_USB_EJECT_FIRST
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. USB screen: second line while connected
+  user: core
+  <source>
+    *: "Eject on the computer before disconnecting."
+  </source>
+  <dest>
+    *: "Eject on the computer before disconnecting."
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_USB_EJECTED
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. USB screen: heading after the computer ejected the drive
+  user: core
+  <source>
+    *: "Ejected"
+  </source>
+  <dest>
+    *: "Ejected"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_USB_CAN_DISCONNECT
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. USB screen: first line after ejecting
+  user: core
+  <source>
+    *: "The cable can now be disconnected."
+  </source>
+  <dest>
+    *: "The cable can now be disconnected."
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_USB_READY_AFTER
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. USB screen: second line after ejecting
+  user: core
+  <source>
+    *: "Rockbox is ready again after disconnecting."
+  </source>
+  <dest>
+    *: "Rockbox is ready again after disconnecting."
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_NOW_PLAYING
+  desc: Text drawn by a theme (%Sx); the English text is the key the theme looks up: do not change it, and no commas or brackets in it. title of the now playing screen
+  user: core
+  <source>
+    *: "Now playing"
+  </source>
+  <dest>
+    *: "Now playing"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_QS_SHUFFLE
+  desc: Text drawn by a theme (%Sx): quick menu, title of the shuffle switch. The English text is the key: the part from @ on names the place and is not shown, translate only the word before it; no commas or brackets.
+  user: core
+  <source>
+    *: "Shuffle@quickmenu"
+  </source>
+  <dest>
+    *: "Shuffle@quickmenu"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_THEME_QS_REPEAT
+  desc: Text drawn by a theme (%Sx): quick menu, title of the repeat switch. The English text is the key: the part from @ on names the place and is not shown, translate only the word before it; no commas or brackets.
+  user: core
+  <source>
+    *: "Repeat@quickmenu"
+  </source>
+  <dest>
+    *: "Repeat@quickmenu"
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYLIST_FOLDERS_UPDATE
+  desc: in the context menu of "Playlists": make or update the playlists of the folders in the playlist directory (iPod 6G)
+  user: core
+  <source>
+    *: "Update Folder Playlists"
+  </source>
+  <dest>
+    *: "Update Folder Playlists"
+  </dest>
+  <voice>
+    *: "Update Folder Playlists"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYLIST_FOLDERS_AUTOUPDATE
+  desc: deprecated
+  user: core
+  <source>
+    *: ""
+  </source>
+  <dest>
+    *: ""
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYLIST_FOLDERS_UPDATED
+  desc: splash after updating the folder playlists: number of playlists made or changed (iPod 6G)
+  user: core
+  <source>
+    *: "%d Playlists Updated"
+  </source>
+  <dest>
+    *: "%d Playlists Updated"
+  </dest>
+  <voice>
+    *: "Playlists Updated"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYLIST_SORT
+  desc: playlist viewer context menu: sort the tracks of a playlist (iPod 6G)
+  user: core
+  <source>
+    *: "Sort"
+  </source>
+  <dest>
+    *: "Sort"
+  </dest>
+  <voice>
+    *: "Sort"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYLIST_SORT_TITLE
+  desc: playlist viewer, sort: alphabetically by the title tag (iPod 6G)
+  user: core
+  <source>
+    *: "By Title"
+  </source>
+  <dest>
+    *: "By Title"
+  </dest>
+  <voice>
+    *: "By Title"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYLIST_SORT_ADDED
+  desc: playlist viewer, sort: in the order the tracks were added, as in the file (iPod 6G)
+  user: core
+  <source>
+    *: "By Date Added"
+  </source>
+  <dest>
+    *: "By Date Added"
+  </dest>
+  <voice>
+    *: "By Date Added"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_PLAYLIST_SORT_TRACKS
+  desc: playlist settings, below "Sort Playlists": order of the tracks of a playlist opened from the playlist list (iPod 6G)
+  user: core
+  <source>
+    *: "Sort Tracks"
+  </source>
+  <dest>
+    *: "Sort Tracks"
+  </dest>
+  <voice>
+    *: "Sort Tracks"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TEMPO_PERCENT
+  desc: tempo screen (iPod 6G, GlossySlate): mode capsule, the rate in percent
+  user: core
+  <source>
+    *: "Percent"
+  </source>
+  <dest>
+    *: "Percent"
+  </dest>
+  <voice>
+    *: "Percent"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TEMPO_HOLD
+  desc: tempo screen (iPod 6G, GlossySlate): label of the two keys that change the rate while they are held
+  user: core
+  <source>
+    *: "Hold"
+  </source>
+  <dest>
+    *: "Hold"
+  </dest>
+  <voice>
+    *: "Hold"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_TEMPO_TIMESTRETCH
+  desc: tempo screen (iPod 6G, GlossySlate): capsule shown in timestretch mode; short, it has to fit the capsule
+  user: core
+  <source>
+    *: "Timestretch"
+  </source>
+  <dest>
+    *: "Timestretch"
+  </dest>
+  <voice>
+    *: "Timestretch"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_DECIMAL_SEPARATOR
+  desc: tempo screen (iPod 6G, GlossySlate): decimal separator of numbers like 112.0 %, one character
+  user: core
+  <source>
+    *: "."
+  </source>
+  <dest>
+    *: "."
+  </dest>
+  <voice>
+    *: ""
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_GRAPHICAL_EQ_GAIN
+  desc: graphical equaliser (iPod 6G, GlossySlate): key with the gain of the band; LANG_GAIN is abbreviated in some languages
+  user: core
+  <source>
+    *: "Gain"
+  </source>
+  <dest>
+    *: "Gain"
+  </dest>
+  <voice>
+    *: "Gain"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_GRAPHICAL_EQ_FREQUENCY
+  desc: graphical equaliser (iPod 6G, GlossySlate): key with the frequency of the band
+  user: core
+  <source>
+    *: "Frequency"
+  </source>
+  <dest>
+    *: "Frequency"
+  </dest>
+  <voice>
+    *: "Frequency"
   </voice>
 </phrase>

@@ -212,7 +212,10 @@ MENUITEM_SETTING(remote_statusbar, &global_settings.remote_statusbar,
                                                     statusbar_callback_remote);
 #endif
 MENUITEM_SETTING(volume_type, &global_settings.volume_type, NULL);
+/* On the iPod 6G the battery display setting is the key lock of the skins
+ * (settings_list.c). */
 #if (CONFIG_BATTERY_MEASURE != 0)
+#define BARS_MENU_BATTERY_DISPLAY
 MENUITEM_SETTING(battery_display, &global_settings.battery_display, NULL);
 #endif
 MAKE_MENU(bars_menu, ID2P(LANG_BARS_MENU), 0, Icon_NOICON,
@@ -221,7 +224,7 @@ MAKE_MENU(bars_menu, ID2P(LANG_BARS_MENU), 0, Icon_NOICON,
           &remote_statusbar,
 #endif
           &volume_type
-#if (CONFIG_BATTERY_MEASURE != 0)
+#ifdef BARS_MENU_BATTERY_DISPLAY
           , &battery_display
 #endif
           );
@@ -385,6 +388,8 @@ MENUITEM_FUNCTION_W_PARAM(browse_rfms, 0, ID2P(LANG_REMOTE_RADIOSCREEN),
 #endif
 #endif
 
+#ifndef IPOD_6G
+/* iPod 6G: no "show icons", list icons are always off (settings_apply()) */
 static int showicons_callback(int action,
                              const struct menu_item_ex *this_item,
                              struct gui_synclist *this_list)
@@ -406,6 +411,7 @@ static int showicons_callback(int action,
 }
 
 MENUITEM_SETTING(show_icons, &global_settings.show_icons, showicons_callback);
+#endif
 MENUITEM_FUNCTION_W_PARAM(browse_themes, 0, ID2P(LANG_CUSTOM_THEME),
                           browse_folder, (void*)&themes, NULL, Icon_Config);
 MENUITEM_SETTING(cursor_style, &global_settings.cursor_style, NULL);
@@ -437,7 +443,9 @@ MAKE_MENU(theme_menu, ID2P(LANG_THEME_MENU),
 #ifdef HAVE_REMOTE_LCD
             &browse_rsbs,
 #endif
+#ifndef IPOD_6G
             &show_icons,
+#endif
 #ifdef HAVE_BACKDROP_IMAGE
             &clear_main_bd,
 #endif

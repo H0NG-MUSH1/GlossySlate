@@ -288,6 +288,12 @@ void usb_set_audio(int value);
 bool usb_audio_get_active(void);
 #endif
 
+#if defined(USB_ENABLE_STORAGE) && defined(IPOD_6G)
+/* true once the host has ejected every drive of the current connection
+ * (SCSI START STOP UNIT with the eject bit), false again on the next one */
+bool usb_storage_all_ejected(void);
+#endif
+
 #if defined(USB_ENABLE_STORAGE) && defined(HAVE_MULTIDRIVE)
 /* when the target has several drives, decide whether mass storage should
  * skip the first drive. This is useful when the second drive is a SD card

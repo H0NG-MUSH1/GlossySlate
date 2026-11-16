@@ -32,6 +32,9 @@
 #include "strptokspn_r.h"
 #include "scrollbar.h"
 #include "font.h"
+#if defined(IPOD_6G) && !defined(BOOTLOADER)
+#include "popup.h"
+#endif
 #ifndef BOOTLOADER
 #include "misc.h" /* get_current_activity */
 #endif
@@ -375,6 +378,23 @@ void splashf(int ticks, const char *fmt, ...)
     /* If fmt is a lang ID then get the corresponding string (which
        still might contain % place holders). */
     fmt = P2STR((unsigned char *)fmt);
+#if defined(IPOD_6G) && !defined(BOOTLOADER) && GS_POPUPS
+    /* GlossySlate popup (gui/popup.c, docs/ipod6g-popups.md); a timed one
+     * puts the screen back when it is over */
+    {
+        static char text[256]; /* static like splash_buf, not on the stack */
+        va_start(ap, fmt);
+        vsnprintf(text, sizeof(text), fmt, ap);
+        va_end(ap);
+        popup_message(text, id);
+        if (ticks)
+        {
+            sleep(ticks);
+            popup_close();
+        }
+        return;
+    }
+#endif
     FOR_NB_SCREENS(i)
     {
         struct screen * screen = &(screens[i]);
@@ -429,6 +449,17 @@ void splash_progress(int current, int total, const char *fmt, ...)
     /* If fmt is a lang ID then get the corresponding string (which
        still might contain % place holders). */
     fmt = P2STR((unsigned char *)fmt);
+#if defined(IPOD_6G) && !defined(BOOTLOADER) && GS_POPUPS
+    {
+        static char text[256];
+        (void)vp_flag;
+        va_start(ap, fmt);
+        vsnprintf(text, sizeof(text), fmt, ap);
+        va_end(ap);
+        popup_progress(text, current, total);
+        return;
+    }
+#endif
     FOR_NB_SCREENS(i)
     {
         struct screen * screen = &(screens[i]);

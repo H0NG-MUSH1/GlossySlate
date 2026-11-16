@@ -63,10 +63,33 @@ enum {
     GO_TO_PLAYLISTS_SCREEN,
     GO_TO_PLAYLIST_VIEWER,
     GO_TO_SYSTEM_SCREEN,
-    GO_TO_SHORTCUTMENU
+    GO_TO_SHORTCUTMENU,
+    /* The database categories "Podcasts" and "Audiobooks" */
+    GO_TO_PODCASTS,
+    GO_TO_AUDIOBOOKS,
 };
 #ifndef PLUGIN
 extern struct menu_item_ex root_menu_;
+
+/* For the sidebar of the main menu (skin tag %Mc): how many albums of
+ * music, podcasts and audiobooks the database has, how many playlists the
+ * playlist directory, how many bookmarks "Recent Bookmarks", how many
+ * recordings the recording directory and how many entries "Shortcuts" has.
+ * -1 while not known. */
+enum media_count {
+    MEDIA_COUNT_ALBUMS = 0,
+    MEDIA_COUNT_PODCASTS,
+    MEDIA_COUNT_AUDIOBOOKS,
+    MEDIA_COUNT_PLAYLISTS,
+    MEDIA_COUNT_BOOKMARKS,
+    MEDIA_COUNT_RECORDINGS,  /* audio files in the recording directory */
+    MEDIA_COUNT_SHORTCUTS,   /* entries of "Shortcuts" */
+};
+int root_menu_media_count(int which);
+#ifdef IPOD_6G
+/* Playlists or bookmarks (enum media_count, -1 both) may have changed */
+void root_menu_media_count_changed(int which);
+#endif
 
 void root_menu_load_from_cfg(void* setting, char *value);
 char* root_menu_write_to_cfg(void* setting, char*buf, int buf_len);

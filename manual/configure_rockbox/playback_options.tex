@@ -11,8 +11,7 @@ you to configure settings related to audio playback.
   %
 \section{Repeat}
   Configures settings related to repeating of directories or playlists.\\
-  Options: \setting{Off} / \setting{All} / \setting{One} / \setting{Shuffle} /
-  \setting{A-B}:
+  Options: \setting{Off} / \setting{All} / \setting{One} / \setting{A-B}:
   \begin{description}
     %
   \item[Off.] The current playlist will not repeat when it is finished.
@@ -26,9 +25,6 @@ you to configure settings related to audio playback.
 
     %
   \item[One. ]Repeat one track over and over unless track is manually skipped.
-    %
-  \item[Shuffle.] When the current playlist has finished playing, it will
-    be shuffled and then repeated.
     %
   \item[A-B.] Repeats between two user defined points within a track,
     typically used by musicians when attempting to learn a piece of music.
@@ -254,6 +250,22 @@ you to configure settings related to audio playback.
   \end{description}
 
 }%
+
+\opt{ipod6g}{
+\section{Headset Remote Control}
+  Enables or disables the buttons on an Apple-compatible wired headset
+  connected to the headphone jack. It is enabled by default. When enabled,
+  a single press of the center button toggles play and pause, two presses
+  skip to the next track, and three presses skip to the previous track.
+  The volume buttons adjust the volume and can be held to repeat. A single
+  press is delayed briefly so Rockbox can recognize multiple presses.
+  For a second after the headphones are plugged in the center button is
+  ignored, so that plugging in does not start playback.
+  Like on the original firmware, the remote's buttons do not switch the
+  display on.
+  This feature works on the 2008 120\,GB and 2009 160\,GB iPod Classic;
+  the 2007 models lack the required jack controller.
+}
 
 \section{Cuesheet Support}\index{Cuesheet Support}
   Enables reading of cuesheet files for played tracks. If a cuesheet is found

@@ -30,7 +30,12 @@ rockboxlogo.220x68x16.bmp
 #elif (LCD_WIDTH == 240) && (LCD_DEPTH >= 16)
 rockboxlogo.240x74x16.bmp
 #elif (LCD_WIDTH >= 320) && (LCD_WIDTH < 480)  && (LCD_DEPTH >= 16)
+#if defined(IPOD_6G)
+/* fork: boot screen over the whole display, see show_logo_boot() */
+rockboxlogo.320x240x16.bmp
+#else
 rockboxlogo.320x98x16.bmp
+#endif
 #elif (LCD_WIDTH >= 480) && (LCD_WIDTH < 640) && (LCD_DEPTH >= 16)
 rockboxlogo.480x149x16.bmp
 #elif (LCD_WIDTH >= 640) && (LCD_DEPTH >= 16)

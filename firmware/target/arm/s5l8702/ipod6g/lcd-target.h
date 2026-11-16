@@ -20,10 +20,15 @@
 #ifndef __LCD_TARGET_H__
 #define __LCD_TARGET_H__
 
+#include <stdbool.h>
+
 // #include "config.h"
 
 /* define this to add support for LCDs with 16-bit command set */
 #define S5L_LCD_WITH_CMDSET16
+
+/* Keep the last complete frame on the panel while the backlight fades. */
+void lcd_hold_frame_for_backlight(bool hold);
 
 /* define this to include support for LCD read ID command */
 // #define S5L_LCD_WITH_READID

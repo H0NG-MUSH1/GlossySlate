@@ -1,0 +1,59 @@
+#  Glossy Slate 1.0 for Rockbox - recording screen (.wrs)
+#  made by tools/build_recording.py
+%wd
+%Fl(2,16-GlossySlate-Bold13.fnt,160)
+%Fl(3,20-GlossySlate-Bold17.fnt,160)
+%Fl(4,14-GlossySlate-Bold11.fnt,160)
+%Fl(7,113-GlossySlate-Tiles.fnt,2)
+%Fl(9,1-GlossySlate-Dot.fnt,1)
+#--- images ---#
+%xl(Sidebar,sidebar.bmp,0,0)
+%xl(TileFrame,tileframe.bmp,41,79)
+%xl(Batt,status_battery.bmp,0,0,12)
+%xl(Charge,status_charge.bmp,0,0,12)
+%xl(Charged,status_charged.bmp,0,0)
+%xl(Lock,status_lock.bmp,0,0)
+%xl(RecDot,rec_dot.bmp,0,0)
+%xl(RecTrack,rec_track.bmp,0,0)
+#--- settings list of the recording screen ---#
+%Vi(-,0,47,160,193,-)
+#--- backdrop layer: white, status bar, rule, side panel ---#
+%V(0,0,160,240,9)%VB
+%dr(0,0,160,240,ffffff)
+%dr(0,0,160,21,ffffff,979797)
+%dr(0,21,160,1,1e1e1e)
+%dr(0,46,160,1,d3d8df)
+%V(160,0,160,240,9)%VB%xd(Sidebar)%xd(TileFrame)
+# empty foreground viewports: a full update copies the finished
+# backdrop there (the screen holds a copy of the previous one)
+%V(0,0,160,47,9)
+%V(160,0,160,240,9)
+#--- status bar ---#
+%V(8,2,72,16,2)%Vf(14171c)
+%s%al%Sx(Recording)
+%V(102,4,10,12,-)
+%?mh<%xd(Lock)>
+%V(115,6,8,8,-)
+%?Rr<%xd(RecDot)>
+%V(128,4,26,13,-)
+%?bp<%?bc<%xd(Charge,%bl)|%xd(Charged)>|%xd(Batt,%bl)>
+#--- peak meters ---#
+%V(8,24,12,14,4)%Vf(5b6371)
+%alL
+%V(8,35,12,14,4)%Vf(5b6371)
+%alR
+%V(22,27,130,5,-)
+%pL(0,0,130,5,rec_meter.bmp,backdrop,RecTrack)
+%V(22,38,130,5,-)
+%pR(0,0,130,5,rec_meter.bmp,backdrop,RecTrack)
+#--- side panel: source, tile, time, size ---#
+%V(165,17,150,20,3)%Vf(ffffff)
+%s%ac%Ri
+%V(201,79,78,113,7)%Vf(dfe6f3)
+%al
+%V(208,190,8,8,-)
+%?Rr<%xd(RecDot)>
+%V(220,186,92,16,2)%Vf(ffffff)
+%al%Rh:%Rn:%Rs
+%V(165,203,150,16,2)%Vf(ffffff)
+%ac%RS

@@ -165,6 +165,46 @@ static const char* get_menu_item_name(int selected_item,
     return P2STR(menu->callback_and_desc->desc);
 }
 
+#ifdef IPOD_6G
+/* The setting of an item of the menu in data, if a click switches it in
+ * place (option_cycles()), else NULL */
+static const struct settings_list *menu_cycling_setting(int selected_item,
+                                                        void *data)
+{
+    const struct menu_item_ex *menu = (const struct menu_item_ex *)data;
+    if ((menu->flags&MENU_TYPE_MASK) != MT_MENU)
+        return NULL;
+    menu = menu->submenus[get_menu_selection(selected_item, menu)];
+    int type = (menu->flags&MENU_TYPE_MASK);
+    if (type != MT_SETTING && type != MT_SETTING_W_TEXT)
+        return NULL;
+    const struct settings_list *setting = find_setting(menu->variable);
+    return (setting && option_cycles(setting)) ? setting : NULL;
+}
+
+/* the value of a setting that switches in place, at the end of its row */
+static const char *menu_get_item_value(int selected_item, void *data,
+                                       char *buffer, size_t buffer_len)
+{
+    const struct settings_list *setting =
+        menu_cycling_setting(selected_item, data);
+    if (!setting)
+        return NULL;
+    int value = ((setting->flags&F_T_MASK) == F_T_BOOL) ?
+        (*(bool*)setting->setting ? 1 : 0) : *(int*)setting->setting;
+    return option_get_valuestring(setting, buffer, buffer_len, value);
+}
+
+/* every item of a menu opens something, except settings that switch in
+ * place and the entries of string lists (MT_RETURN_ID) */
+static bool menu_item_opens(int selected_item, void *data)
+{
+    const struct menu_item_ex *menu = (const struct menu_item_ex *)data;
+    return (menu->flags&MENU_TYPE_MASK) == MT_MENU &&
+           !menu_cycling_setting(selected_item, data);
+}
+#endif
+
 static enum themable_icons  menu_get_icon(int selected_item, void * data)
 {
     const struct menu_item_ex *menu = (const struct menu_item_ex *)data;
@@ -268,6 +308,10 @@ static int init_menu_lists(const struct menu_item_ex *menu,
     title = init_title(menu, &icon, buf, buf_sz);
     gui_synclist_set_title(lists, title, icon);
     gui_synclist_set_icon_callback(lists, global_settings.show_icons?menu_get_icon:NULL);
+#ifdef IPOD_6G
+    lists->callback_item_opens = menu_item_opens;
+    lists->callback_get_item_value = menu_get_item_value;
+#endif
     if(global_settings.talk_menu)
         gui_synclist_set_voice_callback(lists, talk_menu_item);
     gui_synclist_set_nb_items(lists,current_subitems_count);
@@ -708,6 +752,20 @@ int do_menu(const struct menu_item_ex *start_menu, int *start_selected,
                 case MT_SETTING:
                 case MT_SETTING_W_TEXT:
                 {
+#ifdef IPOD_6G
+                    /* like the original iPod firmware: switch to the next
+                     * value in the list, which shows it in the row */
+                    const struct settings_list *setting =
+                        find_setting(temp->variable);
+                    if (setting && option_cycles(setting))
+                    {
+                        option_cycle(setting);
+                        init_menu_lists(menu, &lists, selected, false, vps,
+                                        buf, sizeof buf);
+                        redraw_lists = true;
+                        break;
+                    }
+#endif
                     do_setting_from_menu(temp, vps);
                     init_menu_lists(menu, &lists, selected, false, vps, buf, sizeof buf);
                     redraw_lists = true;
