@@ -1050,6 +1050,12 @@ static int dirbrowse(void)
 
                 if (tc.browse->flags & BROWSE_NO_CONTEXT_MENU)
                     break;
+#if defined(HAVE_TAGCACHE) && defined(IPOD_6G)
+                /* an entry that opens a plugin (Cover Flow) has nothing
+                   to play or insert */
+                if (id3db && numentries && tagtree_is_plugin_entry(&tc))
+                    break;
+#endif
 
                 if(!numentries)
                     onplay_result = onplay(NULL, 0, curr_context, hotkey, customaction);

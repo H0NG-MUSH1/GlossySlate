@@ -11066,13 +11066,13 @@
   desc: Onplay pictureflow
   user: core
   <source>
-    *: "PictureFlow"
+    *: "Cover Flow"
   </source>
   <dest>
-    *: "PictureFlow"
+    *: "Cover Flow"
   </dest>
   <voice>
-    *: "open picture flow"
+    *: "Cover Flow"
   </voice>
 </phrase>
 <phrase>
@@ -18606,5 +18606,89 @@
   </dest>
   <voice>
     *: "Frequency"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COVER_FLOW
+  desc: Cover Flow (PictureFlow, iPod 6G): title of the plugin and the database entry that opens it
+  user: core
+  <source>
+    *: "Cover Flow"
+  </source>
+  <dest>
+    *: "Cover Flow"
+  </dest>
+  <voice>
+    *: "Cover Flow"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COVER_FLOW_SIDE_INSET
+  desc: Cover Flow display settings: how far the side covers move in behind the centre cover
+  user: core
+  <source>
+    *: "Side Cover Inset"
+  </source>
+  <dest>
+    *: "Side Cover Inset"
+  </dest>
+  <voice>
+    *: "Side Cover Inset"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COVER_FLOW_PARALLEL
+  desc: Cover Flow display settings: side covers drawn parallel, all with the same tilt
+  user: core
+  <source>
+    *: "Parallel Covers"
+  </source>
+  <dest>
+    *: "Parallel Covers"
+  </dest>
+  <voice>
+    *: "Parallel Covers"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COVER_FLOW_SCROLL_SPEED
+  desc: Cover Flow display settings: speed while scrolling through the covers, in percent
+  user: core
+  <source>
+    *: "Scroll Speed"
+  </source>
+  <dest>
+    *: "Scroll Speed"
+  </dest>
+  <voice>
+    *: "Scroll Speed"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COVER_FLOW_TRANSITION_SPEED
+  desc: Cover Flow display settings: speed of the move from one cover to the next, in percent
+  user: core
+  <source>
+    *: "Transition Speed"
+  </source>
+  <dest>
+    *: "Transition Speed"
+  </dest>
+  <voice>
+    *: "Transition Speed"
+  </voice>
+</phrase>
+<phrase>
+  id: LANG_COVER_FLOW_TEXT_CROSSFADE
+  desc: Cover Flow display settings: album and artist fade from one cover to the next
+  user: core
+  <source>
+    *: "Text Crossfade"
+  </source>
+  <dest>
+    *: "Text Crossfade"
+  </dest>
+  <voice>
+    *: "Text Crossfade"
   </voice>
 </phrase>

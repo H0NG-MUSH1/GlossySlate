@@ -93,6 +93,9 @@ enum table {
     TABLE_ALLSUBENTRIES,
     TABLE_ALLSUBENTRIES_SORTED_BY_ALBUMS,
     TABLE_PLAYTRACK,
+#ifdef IPOD_6G
+    TABLE_PLUGIN, /* a "%plugin" entry of the root menu */
+#endif
 };
 
 static const struct id3_to_search_mapping {
@@ -121,6 +124,9 @@ enum variables {
     menu_load,
     menu_reload,
     menu_shuffle_songs,
+#ifdef IPOD_6G
+    menu_plugin,
+#endif
 };
 
 /* Capacity 10 000 entries (for example 10k different artists) */
@@ -359,6 +365,13 @@ static int get_token_str(char *buf, int size)
     return 0;
 }
 
+#ifdef IPOD_6G
+/* "Cover Flow" %plugin "pictureflow": an entry that opens a plugin */
+#define TAG_MATCH_PLUGIN TAG_MATCH("%plugin", menu_plugin)
+#else
+#define TAG_MATCH_PLUGIN
+#endif
+
 static int get_tag(int *tag)
 {
     /* case insensitive matching ahead - these should all be lower case */
@@ -394,6 +407,7 @@ static int get_tag(int *tag)
         TAG_MATCH("entryage", tag_virt_entryage) \
         TAG_MATCH("commitid", tag_commitid) \
         TAG_MATCH("%include", var_include) \
+        TAG_MATCH_PLUGIN \
         TAG_MATCH("playcount", tag_playcount) \
         TAG_MATCH("autoscore", tag_virt_autoscore) \
         TAG_MATCH("lastplayed", tag_lastplayed) \
@@ -876,6 +890,15 @@ static bool parse_search(struct menu_entry *entry, const char *str)
 
         return true;
     }
+
+#ifdef IPOD_6G
+    if (entry->type == menu_plugin)
+    {
+        /* the plugin's name, as in viewers.config (filetype_load_plugin()) */
+        return get_token_str(inst->name, sizeof inst->name) >= 0
+               && inst->name[0] != '\0';
+    }
+#endif
 
     if (entry->type != menu_next && entry->type != menu_shuffle_songs)
         return false;
@@ -2119,6 +2142,13 @@ static int load_root(struct tree_context *c)
                 dptr->extraseek = i;
                 dptr->customaction = ONPLAY_CUSTOMACTION_FIRSTLETTER;
                 break;
+#ifdef IPOD_6G
+            case menu_plugin:
+                dptr->newtable = TABLE_PLUGIN;
+                dptr->extraseek = i;
+                dptr->customaction = ONPLAY_NO_CUSTOMACTION;
+                break;
+#endif
         }
 
         dptr++;
@@ -2213,6 +2243,34 @@ int tagtree_load(struct tree_context* c)
  * true, make sure that you are back at the previous dirlevel, by
  * calling tagtree_exit as needed, with is_visible set to false.
  */
+#ifdef IPOD_6G
+/* A "%plugin" entry: the plugin runs on top of the database view, which
+ * keeps its place (like "Cover Flow" of the context menu) */
+static int tagtree_run_plugin(const char *plugin)
+{
+    char name[MENUENTRY_MAX_NAME];
+    strmemccpy(name, plugin, sizeof name); /* the tagtree buffer may move */
+    switch (filetype_load_plugin(name, NULL))
+    {
+        case PLUGIN_GOTO_WPS:
+            return GO_TO_WPS;
+        case PLUGIN_USB_CONNECTED:
+            return GO_TO_ROOT;
+        default:
+            return 0;
+    }
+}
+
+bool tagtree_is_plugin_entry(struct tree_context *c)
+{
+    struct tagentry *dptr;
+    if (c->currtable != TABLE_ROOT)
+        return false;
+    dptr = tagtree_get_entry(c, c->selected_item);
+    return dptr && dptr->newtable == TABLE_PLUGIN;
+}
+#endif
+
 int tagtree_enter(struct tree_context* c, bool is_visible)
 {
     logf( "%s", __func__);
@@ -2227,6 +2285,11 @@ int tagtree_enter(struct tree_context* c, bool is_visible)
     bool adjust_selection = true;
 
     dptr = tagtree_get_entry(c, c->selected_item);
+
+#ifdef IPOD_6G
+    if (c->currtable == TABLE_ROOT && dptr->newtable == TABLE_PLUGIN)
+        return tagtree_run_plugin(menus[c->currextra]->items[dptr->extraseek]->si.name);
+#endif
 
     c->dirfull = false;
     seek = dptr->extraseek;

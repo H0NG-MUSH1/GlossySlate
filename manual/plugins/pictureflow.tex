@@ -1,6 +1,11 @@
 \subsection{PictureFlow}
 \screenshot{plugins/images/ss-pictureflow}{PictureFlow}{img:pictureflow}
-PictureFlow is a visual browser for your albums.  After you've selected something to play,
+PictureFlow is a visual browser for your albums.
+\opt{ipod6g}{It is drawn as Cover Flow (from Rockpod): seven covers in view,
+in the colours of the theme and below its status bar. The first entry of the
+database, ``Cover Flow'', opens it. Selecting an album turns its cover
+around; its back lists the titles with their length.}
+After you've selected something to play,
 PictureFlow will continue running by default, or can optionally show the WPS. Using
 the context menu, songs can be added to the dynamic playlist or other playlists directly
 from PictureFlow (see \reference{ref:playingnext_submenu}).
@@ -43,6 +48,9 @@ reduces the time it takes for cover art to be displayed.}}
     in PictureFlow.
     \item PictureFlow will accept album art larger than the dimensions of the
     screen, but the larger the dimensions, the longer they will take to scale.
+    \item Albums without album art show the default cover of the theme, if
+    the theme has one (\fname{cover\_flow.bmp} in the bitmap folder of its
+    status bar skin), otherwise a question mark.
   \end{itemize}
 
 \subsubsection{Keys}
@@ -229,6 +237,22 @@ reduces the time it takes for cover art to be displayed.}}
 \subsubsection{Display Settings Menu}
 
 \begin{description}
+\opt{ipod6g}{
+  \item[Display FPS.] Displays frames per second on screen.
+  \item[Centre margin.] The distance, in screen pixels, with zoom at 100, between
+  the centre and side slides. Scales with zoom.
+  \item[Side Cover Inset.] How far, in pixels, the side covers move in behind
+  the centre cover.
+  \item[Zoom.] Changes the distance at which slides are rendered from the ``camera''.
+  \item[Parallel Covers.] Draw all side covers with the same tilt.
+  \item[Resize Covers.] Set whether to automatically resize the covers or to leave
+  them at their original size.
+  \item[Status Bar.] Show the status bar of the theme above the covers.
+  \item[Scroll Speed.] Speed, in percent, while scrolling through the covers.
+  \item[Transition Speed.] Speed, in percent, of the move to the next cover.
+  \item[Text Crossfade.] Fade album and artist from one cover to the next.
+}
+\nopt{ipod6g}{
   \item[Backlight.] Force backlight on while running pictureflow.
   \item[Display FPS.] Displays frames per second on screen.
   \item[Spacing.] The distance between the front edges of the side slides, i.e. changes
@@ -241,4 +265,5 @@ reduces the time it takes for cover art to be displayed.}}
   \item[Zoom.] Changes the distance at which slides are rendered from the ``camera''.
   \item[Resize Covers.] Set whether to automatically resize the covers or to leave
   them at their original size.
+}
 \end{description}

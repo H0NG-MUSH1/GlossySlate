@@ -428,6 +428,54 @@ faders (GlossySlate/DESIGN.md 5.13).
 Memory: about 60 KB of parts and 150 KB for the field in the plugin buffer
 (2 MB, not the playback buffer) while the screen is open.
 
+## Cover Flow from Rockpod (17 November 2026)
+
+PictureFlow is replaced by the Cover Flow of Rockpod
+(https://github.com/nuxcodes/rockpod, Nux Li, GPL v2 or later like
+Rockbox), and the database opens it from its first entry, "Cover Flow".
+
+Rockpod's changes to `pictureflow.c` were taken over by a three-way merge
+(Rockpod's base 58b186d6d, Rockpod's master 0a3446e72, this tree), without
+conflicts:
+
+- seven covers in view, the side covers parallel with one tilt and an
+  automatic spacing, the centre cover in front when it passes the next one;
+- the colours of the theme instead of black and white (background,
+  foreground, selector), covers and reflections fade to the background;
+- the status bar of the theme with the title "Cover Flow" (switchable);
+  the covers are drawn below it;
+- the animation advances by elapsed time, speeds adjustable; album and
+  artist fade from cover to cover;
+- covers dithered to RGB565 (4 x 4 Bayer), a cache of 100 covers, cache
+  version 5 (the album art cache is built again once);
+- the track list shows titles only, without disc and track number; the
+  selected row is drawn like the menus (selector type);
+- Menu (short) closes the track list before it closes Cover Flow; the
+  backlight follows the settings (the option "Backlight" is gone).
+
+Left out, because they depend on other Rockpod changes: dynamic colours
+from the album art (`dynamic_colors_resolve()`), the SSD storage mode
+(`global_settings.storage_mode`) and `skin_render_inhibit_flush()`. The
+latter kept the status bar from pushing the framebuffer to the LCD while
+PictureFlow drew; since "gui: simplify screen updates" (c0a8303a9c) the
+status bar only does that from `get_action()`, and Cover Flow asks for the
+buttons before it draws a frame, so the LCD gets complete frames only. The
+plugin API is unchanged.
+
+| File | Change |
+| --- | --- |
+| `apps/plugins/pictureflow/pictureflow.c` | Rockpod's Cover Flow as above; the display settings with texts of their own instead of English strings and reused labels; the menus titled "Cover Flow" and "Settings" instead of the English "PictureFlow (Settings)"; the fork's selector "bar (gloss)" in the track list. |
+| `apps/tagtree.c`, `apps/tagtree.h` | New entry type `%plugin` in `tagnavi.config` (iPod 6G): `"Name" %plugin "plugin"` runs the plugin (as in `viewers.config`, `filetype_load_plugin()`) on top of the database view, which keeps its place; "Play" in the plugin goes to the now playing screen. `tagtree_is_plugin_entry()`. |
+| `apps/tree.c` | No context menu on such an entry (nothing to play or insert). |
+| `apps/tagnavi.config` | `"Cover Flow" %plugin "pictureflow"` as the first entry of the database. |
+| `apps/lang/*.lang` | `LANG_COVER_FLOW` ("Cover Flow", title and database entry), `LANG_COVER_FLOW_SIDE_INSET`, `LANG_COVER_FLOW_PARALLEL`, `LANG_COVER_FLOW_SCROLL_SPEED`, `LANG_COVER_FLOW_TRANSITION_SPEED`, `LANG_COVER_FLOW_TEXT_CROSSFADE`, at the end of English, English (US), German and Spanish. `LANG_ONPLAY_PICTUREFLOW` (context menu, hotkey, playlist viewer) says "Cover Flow" in these four languages. |
+| `docs/CREDITS` | Nux Li. |
+| `manual/plugins/pictureflow.tex` | Cover Flow, the database entry and the display settings. |
+
+Memory: as before in the plugin buffer (2 MB, not the playback buffer); the
+album art cache takes an eighth of what is left after the album index (at
+least three covers) instead of a quarter.
+
 ## No white noise after boot (17 November 2026)
 
 With headphones plugged in, the iPod played loud white noise after every
@@ -451,6 +499,18 @@ with. So the boot now ends in the state a playback leaves behind.
 | `firmware/drivers/audio/cs42l55.c` | `audiohw_postinit()` (iPod 6G) leaves the headphone and line out registers alone once `audiohw_set_volume()` / `audiohw_set_lineout_volume()` wrote them (`hp_volume_set`, `lineout_volume_set`, cleared in `audiohw_preinit()`). |
 | `firmware/target/arm/s5l8702/pcm-s5l8702.c` | `sink_dma_postinit()` (iPod 6G) instead of `audiohw_postinit()` as the sink's postinit: it starts I2S0, queues three 2 KB blocks of zero samples (about 35 ms), stops after 20 ms while they still flow, as a playback stops, and only then calls `audiohw_postinit()`. |
 
+## Cover Flow: track list on the back of the cover (17 November 2026)
+
+Selecting an album in Cover Flow no longer zooms into a list over the whole
+screen: the cover turns to the left about its vertical axis, and its back
+shows the titles in the GlossySlate design, while the other covers stay
+visible around it (GlossySlate/DESIGN.md 5.14).
+
+| File | Change |
+| --- | --- |
+| `apps/plugins/pictureflow/pictureflow.c` | `PF_GLOSSY` (iPod 6G, RGB565 320 × 240): the opening and closing animation (`pfg_cover_frame()`: 6 frames loosening, 16 frames turning, by the clock), the turned card with PictureFlow's camera (`pfg_card()`), the back (`pfg_draw_back()`) instead of `show_track_list()`'s list, fixed rows from the top (`reset_track_list()`), the track length from the database (`track_data.length`), scroll lines in a box of their own (`set_scroll_line_in()`). The buffers (scene behind, back, texture, about 360 KB) come from the end of the slide cache in the plugin buffer (`pfg_reserve()`); without room the old list stays. Titles found during an opening that is turned back are given back (`free_borrowed_tracks()`), so the cover loader is not left locked. The knob is that of the lists (`gui_scrollbar_draw_overlay()`: alpha, width, size, shown for 1 s on scrolling, then faded out), and the list stops at its ends. The playing title has the speaker of the database lists before its time (`track_data.idx_id` against `tagcache_idx` of the playing track, as `tagtree_item_mark()`; the mask comes from `tools/ipod6g_list_marks.py` through the generator). The loosening blends channel by channel (`pfg_blend()`; red and blue blended in one word turned the reflection yellow). |
+| `apps/plugins/pictureflow/pictureflow_glossy.h` | generated by `GlossySlate/tools/build_pictureflow.py`: sizes and colour rows of the back. |
+
 ## The inline remote does not light the display (18 November 2026)
 
 Pausing or skipping with the earphone remote switched the display on, in
@@ -463,3 +523,18 @@ without a button press, in the now playing screen.
 | --- | --- |
 | `firmware/drivers/button.c` | `button_tick()` (`HAVE_MIKEY_REMOTE`): a press or repeat of a `BUTTON_MULTIMEDIA` button is posted as before but switches neither the backlight nor the button light on, and "first keypress enables backlight only" does not eat it. The buttons of the iPod light the display as before. |
 | `manual/configure_rockbox/playback_options.tex` | Headset Remote Control: the remote does not switch the display on. |
+
+## Cover Flow: the theme's default cover (18 November 2026)
+
+Albums without a picture (none in the folder, none embedded, or one that
+cannot be read) showed PictureFlow's "?" in Cover Flow, also while a cover
+was still loading. Now they show the default cover of the theme, the same
+note on grey as in the album list, the mini player and the now playing
+screen (GlossySlate/DESIGN.md 5.14).
+
+| File | Change |
+| --- | --- |
+| `apps/plugins/pictureflow/pictureflow.c` | `create_empty_slide()` reads `cover_flow.bmp` from the bitmap folder of the status bar skin (`WPS_DIR/<sbs_file>/`, as the tempo screen and the EQ find their parts) and only without it `pictureflow_emptyslide.bmp`. The picture is read at every start and the cached slide (`emptyslide.pfraw`) is written only when it differs (`pfraw_holds()`), so a change of theme shows at once without writing at every start. |
+| `GlossySlate/tools/build_pictureflow.py` | also writes `.rockbox/wps/glossyslate/cover_flow.bmp`: the default cover from `firmware-assets/albumart_list_default_512.png`, 128 × 128 (PictureFlow's slide width at 320 × 240), scaled in full precision and dithered to RGB565 once (helpers of `build_wps_cover.py`). |
+| `GlossySlate/.rockbox/wps/glossyslate/cover_flow.bmp` | new, 24 bit, opaque. |
+| `manual/plugins/pictureflow.tex` | albums without album art show the theme's default cover. |

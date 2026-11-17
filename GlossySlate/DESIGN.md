@@ -652,6 +652,71 @@ Select: next edit mode, Menu: close).
   blue.
 - Numbers with the decimal separator of the language, a real minus.
 
+### 5.14 Cover Flow: the track list on the back of the cover
+
+PictureFlow ("Cover Flow") from the designer's board "PictureFlow", after
+the photos of RetailOS's Cover Flow. The skin does not draw it: the plugin
+composes it (`apps/plugins/pictureflow/pictureflow.c`, `PF_GLOSSY`, iPod
+6G) from rows of colours that `tools/build_pictureflow.py` writes from
+`tools/pictureflow/` (`parts.json` and the three pieces of the scroll bar)
+into `apps/plugins/pictureflow/pictureflow_glossy.h`. All of it is
+composed in 24 bit and dithered to RGB565 at its place on the screen,
+like the skin's `%dr`; no picture is loaded.
+
+- Opening an album: 6 frames loosen the cover (its reflection and the
+  album text fade), 16 frames turn it to the left about its vertical axis,
+  eased (θ = 180° · (1 − cos(π · j / 16)) / 2), PictureFlow's camera
+  (distance 240); the card grows from the cover to the back 252 × 213 at
+  x 34, y 27. Back the same frames in reverse. The frames follow the
+  clock (30 per second, about 0.7 s), so a slow frame is skipped, not
+  stretched.
+- Unlike the board, the cover flow stays visible around the back: behind
+  the card is PictureFlow's scene without the centre cover (side covers on
+  the theme's background), not the blurred and lightened cover. So the
+  field and its 1 px frame (`#0D0F13` 24 %, open below) lie on the theme's
+  background, opaque: over the sharp covers they would let them show
+  through.
+- Field 250 wide at x 35, from y 28 out of the screen at the bottom. Head
+  44 high, accent blue 62 % → 74 %, 1 px white 30 % on top; album 17 px
+  bold white at y 32, artist 13 px `#DCE6F2` at y 52, both up to x 273,
+  cut with "…".
+- 7 rows of 24 from y 72, white 76 %. Title 14 px bold `#0D0F13` from x 47
+  up to x 225 (less where a long time begins), cut with "…"; time m:ss
+  (h:mm:ss) right-aligned at x 273, `#2E3644`. The selected row is the
+  gloss bar of the lists, opaque, white texts; its title scrolls within
+  x 47–225 when it is too long.
+- Every second title from the second on (2nd, 4th, …) has a grey stripe
+  (`rgba(46,54,68,.07)`); the stripes belong to the titles and move with
+  them, and below the last title they go on. The board had them on the
+  1st, 3rd, … title.
+- More than 7 titles: the knob of the lists (not the board's pill), the
+  same in every respect: black, alpha 8 of 15 (its ends 13 at the sides),
+  as wide as "scrollbar width" less one, 2 px from the field's right edge,
+  3 px from the ends of the list (y 75–237); shown when the selection
+  moves, for 1 s, then faded out in 7 steps within 0.35 s.
+- The list stops at its first and last title (no wrap-around).
+- The playing title has the speaker of the database lists (14 × 12, from
+  `tools/ipod6g_list_marks.py`) 6 px before its time, vertically centred,
+  in the theme's "list arrow color", on the selected row in the
+  selector's text colour; the title ends 8 px before it.
+- While the titles are being looked up: "Loading..." (`LANG_WAIT`) 14 px
+  bold `#5B6371`, centred, at y 72.
+- Short albums start at the top as well; the list moves on by a row when
+  the selection reaches its end.
+- Albums without a picture (none in the folder, none embedded, or one that
+  cannot be read) show the theme's default cover, also while their cover
+  is still loading: `.rockbox/wps/glossyslate/cover_flow.bmp`, 128 × 128
+  (PictureFlow's slide width at 320 × 240), opaque, square, without a
+  reflection (PictureFlow adds its own as for every cover).
+  `tools/build_pictureflow.py` writes it from the same 512 px template as
+  the other default covers, scaled in full precision and dithered to RGB565
+  once. The plugin finds it in the bitmap folder of the status bar skin;
+  with a theme without it, PictureFlow's "?" stays.
+- Memory: the scene behind (320 × 240), the back without its rows and the
+  back as the texture for the turn (252 × 213 each), about 360 KB taken
+  from the slide cache in the plugin buffer, never from the playback
+  buffer. The fonts are those the status bar skin loads (shared).
+
 ## 6. Screens
 
 All coordinates absolute.
@@ -855,7 +920,8 @@ The iPod stays in USB mode until the cable is pulled.
 | `.rockbox/wps/glossyslate.sbs` | status bar skin: all menus, sidebar, lock screen, USB, quick menu |
 | `.rockbox/wps/glossyslate.wps` | now playing, volume, lock screen over the now playing screen |
 | `.rockbox/wps/glossyslate.wrs` | recording screen |
-| `.rockbox/wps/glossyslate/*.bmp` | 60 bitmaps (24 bit with dithering or 32 bit with alpha) |
+| `.rockbox/wps/glossyslate/*.bmp` | 60 bitmaps of the skins (24 bit with dithering or 32 bit with alpha) |
+| `.rockbox/wps/glossyslate/cover_flow.bmp` | default cover of Cover Flow (5.14), loaded by `pictureflow.rock` |
 | `.rockbox/wps/glossyslate/tempo/*.bmp` | 23 parts of the tempo screen (5.12), loaded by `pitch_screen.rock` while it is open |
 | `.rockbox/wps/glossyslate/eq/*.bmp` | 21 parts of the graphical EQ (5.13), loaded by the core while the screen is open |
 | `.rockbox/fonts/*.fnt` | 11 fonts (RB12, 4 bit anti-aliasing) |
@@ -986,6 +1052,8 @@ python3 build_tile_glyphs.py          # tile glyphs delivered as pictures (sourc
 python3 build_tempo.py                # parts of the tempo screen (tempo/) dithered into .rockbox/wps/glossyslate/tempo/
 python3 build_eq.py                   # parts of the graphical EQ (eq/) dithered into .rockbox/wps/glossyslate/eq/
 python3 build_wps_repeat.py           # repeat "One" of the now playing screen (frame 3 of wps_repeat.bmp), after build_assets.py
+python3 build_pictureflow.py          # colour rows of the back of the cover in Cover Flow (pictureflow/) into apps/plugins/pictureflow/pictureflow_glossy.h,
+                                      # and the default cover of Cover Flow (.rockbox/wps/glossyslate/cover_flow.bmp)
 python3 preview.py                    # previews (skin simulator) of .rockbox/ into previews/
 python3 preview.py --lang deutsch --out /tmp/de   # the same in another language of apps/lang
 ```
