@@ -432,7 +432,11 @@ at U+E006). Revised on the evening of 17 November: bass and treble show the
 speaker with a slow wave and with three quick waves (no clefs), the dynamic
 range compressor and its entries the wave with an arrow from above and one
 from below (the tile of the first delivery, the owner's wish), and
-`audio_file` the new playlist note cut out of the sheet. `setting_tiles()` in
+`audio_file` the new playlist note cut out of the sheet. On 18 November the
+speaker of bass and treble moved to exactly the place of the speaker of
+Sound Settings (before 8 units to the left), and the wave took the place of
+its sound arcs (x 104–142): bass height ±20, stroke 8; treble height ±16,
+stroke 5, so the three waves stay apart at 78 px. `setting_tiles()` in
 `build_skin.py` assigns them by the menu text, with the value of the entry
 (`%LV`) under the tile; `SUBMENU_TILES` gives entries without a fixed text
 the tile of their sub menu (`%Lt`). The status bar skin grows to about
