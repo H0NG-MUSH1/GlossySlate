@@ -62,6 +62,15 @@ are guarded by `IPOD_6G` in the source.
   again from the database.
 - **Album list with covers** and a speaker icon at the playing track in all
   lists.
+- **Cover Flow after the original iPod (RetailOS):** the first entry of the
+  database opens Cover Flow (Rockpod's Cover Flow, in the colours of the
+  theme and below its status bar, with smooth animations whose speed can be
+  set). Selecting an album turns its cover to the left, and its back shows
+  the album's tracks in the Glossy Slate style: album and artist in a blue
+  header, up to seven titles with their length, the glossy selection bar,
+  the fading scrollbar and the speaker at the playing track. The other
+  covers stay visible around it; Menu turns the cover back. Albums without
+  a picture show the theme's default cover.
 - **Popups** drawn as glossy panels with shadows (messages, progress,
   yes/no with "Center button" / "Other button").
 - **USB:** a second screen once the computer has ejected the drive.
@@ -125,7 +134,8 @@ This work would not have been possible without these projects:
   Rockbox theme for the iPod Classic that Glossy Slate grew out of.
 - **[Rockpod](https://github.com/nuxcodes/rockpod)** by nuxcodes – a Rockbox
   fork for the iPod Classic and Video that showed what a modern Rockbox on
-  the iPod can be and was a reference for this fork.
+  the iPod can be and was a reference for this fork; its Cover Flow is the
+  base of the Cover Flow here.
 
 The fonts are derived from Liberation Sans 2 (SIL Open Font License 1.1).
 
