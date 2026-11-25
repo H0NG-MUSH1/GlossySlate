@@ -38,6 +38,7 @@
 #include "rbunicode.h"
 #include "popup.h"
 #include "popup_parts.h"
+#include "popup_letters.h"
 
 #define SHADOW_L 12
 #define SHADOW_T 9
@@ -57,6 +58,7 @@
 
 #define TEXT_COLOUR LCD_RGBPACK(255, 255, 255)
 #define HINT_COLOUR LCD_RGBPACK(0xc5, 0xcf, 0xdd)
+#define LETTER_COLOUR LCD_RGBPACK(0xdf, 0xe6, 0xf3) /* light symbol */
 
 static int popup_font = -1, hint_font = -1;
 
@@ -225,6 +227,31 @@ static void draw_panel(int x, int y, int w, int h)
     draw_part(l, x - SHADOW_L, y - SHADOW_T, 0, l->width, false);
     draw_middle(m, x + PAD_X, y - SHADOW_T, w - 2 * PAD_X);
     draw_part(l, x + w - PAD_X, y - SHADOW_T, 0, l->width, true);
+}
+
+/* a 4 bit alpha mask (popup_letters.h) in colour c at x, y */
+static void draw_glyph(const struct popup_glyph *g, int x, int y, fb_data c)
+{
+    int stride = (g->w + 1) / 2;
+    for (int r = 0; r < g->h; r++)
+    {
+        int sy = y + r;
+        if (sy < 0 || sy >= LCD_HEIGHT)
+            continue;
+        fb_data *row = screen_px(0, sy);
+        const unsigned char *src = g->mask + r * stride;
+        for (int col = 0; col < g->w; col++)
+        {
+            int sx = x + col;
+            if (sx < 0 || sx >= LCD_WIDTH)
+                continue;
+            unsigned v = (col & 1) ? (src[col >> 1] & 15) : (src[col >> 1] >> 4);
+            if (v == 0)
+                continue;
+            row[sx] = (v == 15) ? c :
+                blend(row[sx], c, v * 17, dither[sy & 3][sx & 3]);
+        }
+    }
 }
 
 /* a horizontal piece of three parts (left, middle repeated, right) */
@@ -465,6 +492,11 @@ void popup_close(void)
     saved.valid = false;
 }
 
+bool popup_intact(void)
+{
+    return saved.valid && area_sum() == saved.sum;
+}
+
 enum popup_state popup_screen_state(void)
 {
     if (saved.valid)
@@ -526,6 +558,21 @@ void popup_message(const char *text, int lang_id)
     }
     else
         draw_lines(x, y + PAD_Y, w, lines, n);
+    popup_end();
+}
+
+/* fast scrolling (docs/ipod6g-fast-scroll.md): a square panel with one big
+ * letter, 'A' .. 'Z' or '#' */
+void popup_letter(int letter)
+{
+    int s = POPUP_LETTER_PANEL;
+    int x = (LCD_WIDTH - s) / 2, y = (LCD_HEIGHT - s) / 2;
+    const struct popup_glyph *g =
+        &popup_letters[(letter >= 'A' && letter <= 'Z') ? letter - 'A' : 26];
+
+    popup_begin(x, y, s, s);
+    draw_panel(x, y, s, s);
+    draw_glyph(g, x + g->x, y + g->y, LETTER_COLOUR);
     popup_end();
 }
 

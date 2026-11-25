@@ -82,6 +82,77 @@ static unsigned int  wheel_repeat            = 0;
 unsigned int  wheel_velocity          = 0;
 static unsigned long last_wheel_usec         = 0;
 
+#ifdef IPOD_6G
+/* Fast scrolling in the database and in Cover Flow (docs/ipod6g-fast-scroll.md)
+ * starts once the wheel has been turned briskly for a while: in one
+ * direction, without a pause and without lifting the finger, for at least
+ * FAST_TURN_USEC, and in the last FAST_TURN_USEC by at least
+ * FAST_TURN_CLICKS (the mean speed: single steps vary too much). It is
+ * measured here, at every step, from the clicks and their time: the events
+ * of the wheel carry no count, and steps are dropped while the button queue
+ * is not empty. */
+#define FAST_TURN_CLICKS 96      /* one rotation ... */
+#define FAST_TURN_USEC   1000000 /* ... a second, kept up for a second */
+#define FAST_TURN_PAUSE   300000 /* a longer pause between steps starts anew */
+/* a step has at least WHEEL_SENSITIVITY clicks: once more steps than the
+ * ring holds came within FAST_TURN_USEC, they are FAST_TURN_CLICKS or more */
+#define FAST_TURN_STEPS  (FAST_TURN_CLICKS / WHEEL_SENSITIVITY + 2)
+
+static struct { unsigned long usec, clicks; } fast_turn[FAST_TURN_STEPS];
+static int fast_turn_n, fast_turn_head;
+static unsigned long fast_turn_clicks, fast_turn_start;
+static volatile bool fast_turn_on;
+
+static void fast_turn_reset(void)
+{
+    fast_turn_n = 0;
+    fast_turn_on = false;
+}
+
+/* a step of the wheel of clicks at usec. Once the turn has lasted
+ * FAST_TURN_USEC, the clicks since the newest step at least that old must
+ * come to FAST_TURN_CLICKS per FAST_TURN_USEC. If the ring holds no step
+ * that old any more (the first step of the turn is), more steps than it
+ * holds came within that time: fast enough. */
+static void fast_turn_step(unsigned long usec, int clicks)
+{
+    bool fast = false;
+    if (fast_turn_n == 0)
+        fast_turn_start = usec;
+    fast_turn_clicks += clicks;
+    fast_turn_head = (fast_turn_head + 1) % FAST_TURN_STEPS;
+    fast_turn[fast_turn_head].usec = usec;
+    fast_turn[fast_turn_head].clicks = fast_turn_clicks;
+    if (fast_turn_n < FAST_TURN_STEPS)
+        fast_turn_n++;
+    if (((usec - fast_turn_start) & 0x7fffffff) >= FAST_TURN_USEC)
+    {
+        fast = true;
+        for (int i = 1; i < fast_turn_n; i++)
+        {
+            int k = (fast_turn_head + FAST_TURN_STEPS - i) % FAST_TURN_STEPS;
+            unsigned long age = (usec - fast_turn[k].usec) & 0x7fffffff;
+            if (age >= FAST_TURN_USEC)
+            {
+                fast = (unsigned long long)(fast_turn_clicks -
+                                            fast_turn[k].clicks) *
+                       FAST_TURN_USEC >=
+                       (unsigned long long)FAST_TURN_CLICKS * age;
+                break;
+            }
+        }
+    }
+    fast_turn_on = fast;
+}
+
+/* whether the wheel has been turned briskly for a while up to its last
+ * step (and still is) */
+bool button_wheel_turned_fast(void)
+{
+    return fast_turn_on;
+}
+#endif /* IPOD_6G */
+
 /* Variable to use for setting button status in interrupt handler */
 static int int_btn = BUTTON_NONE;
 #ifdef HAVE_WHEEL_POSITION
@@ -151,6 +222,9 @@ static inline int ipod_4g_button_read(void)
                     wheel_velocity          = 0;
                     accumulated_wheel_delta = 0;
                     wheel_repeat            = BUTTON_NONE;
+#ifdef IPOD_6G
+                    fast_turn_reset();
+#endif
                 }
                 else
                 {
@@ -220,6 +294,12 @@ static inline int ipod_4g_button_read(void)
                             wheel_velocity          = 0;
                             accumulated_wheel_delta = 0;
                         }
+#ifdef IPOD_6G
+                        if (wheel_velocity == 0 || /* reversal, timeout */
+                            TIME_AFTER(usec, last_wheel_usec + FAST_TURN_PAUSE))
+                            fast_turn_reset();
+                        fast_turn_step(usec, wheel_delta);
+#endif
 
 #ifdef HAVE_WHEEL_POSITION
                         if (send_events) 

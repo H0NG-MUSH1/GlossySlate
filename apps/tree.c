@@ -57,6 +57,7 @@
 #include "tagtree.h"
 #ifdef IPOD_6G
 #include "albumart_list.h"
+#include "gui/popup.h"
 
 static void tree_draw_albumart(int item, void *data, int x, int y)
 {
@@ -843,6 +844,181 @@ static int exit_to_new_screen(int screen)
     return screen;
 }
 
+#ifdef IPOD_6G
+/* Fast scrolling in the database (docs/ipod6g-fast-scroll.md): turning the
+ * wheel briskly for a while in a sorted list (one rotation a second or
+ * faster for a second: button_wheel_turned_fast()) shows a square popup with
+ * the initial of the selected entry. From then on every step of the wheel
+ * (4 clicks, 24 to a turn) goes to the next or previous letter, at any
+ * speed: the list behind the popup jumps to the first entry of the letter,
+ * and the popup stays on the screen, only its letter changes. 2 s after the
+ * last step it goes; any other button closes it (and does nothing else). */
+#define FS_MIN_ENTRIES 20           /* shorter lists need no letters */
+#define FS_GAP         (HZ * 3 / 10) /* a pause of the wheel: a new turn */
+#define FS_HOLD        (HZ * 2)     /* the letter stays after the last step */
+#define FS_MAX_RUNS    64
+
+static struct {
+    bool active;
+    bool refused;       /* this list has no letters: not again in this turn */
+    long last_tick;     /* of the last step of the wheel */
+    long hide_tick;     /* when the letter goes */
+    int nruns, run;     /* runs of entries with the same initial, the shown one */
+    struct { int start; char key; } runs[FS_MAX_RUNS];
+} fs;
+
+/* the letter of an initial byte: 'A' .. 'Z', '#' for digits, signs and
+ * other scripts (which a byte-wise sort puts before or after the letters) */
+static char fs_key(int c)
+{
+    if (c >= 'a' && c <= 'z')
+        return c - 'a' + 'A';
+    if (c >= 'A' && c <= 'Z')
+        return c;
+    return '#';
+}
+
+/* The runs of equal letters in the list, after the special entries. Only a
+ * list sorted by name has one run per letter; a few more are allowed ('#'
+ * before and after the letters), a list in another order (tracks by number,
+ * episodes by date) has many and gets no letters. */
+static bool fs_build_runs(void)
+{
+    int first = tc.special_entry_count, n = tc.filesindir;
+    unsigned long seen = 0;
+    int distinct = 0;
+
+    fs.nruns = 0;
+    if (!tagtree_fast_scroll_ok(&tc) || n - first < FS_MIN_ENTRIES)
+        return false;
+    for (int i = first; i < n; i++)
+    {
+        int c = tagtree_entry_initial(&tc, i);
+        if (c == 0)
+            return false;
+        char key = fs_key(c);
+        unsigned long bit = 1UL << (key == '#' ? 26 : key - 'A');
+        if (!(seen & bit))
+        {
+            seen |= bit;
+            distinct++;
+        }
+        if (fs.nruns == 0 || fs.runs[fs.nruns - 1].key != key)
+        {
+            if (fs.nruns == FS_MAX_RUNS)
+                return false;
+            fs.runs[fs.nruns].start = i;
+            fs.runs[fs.nruns].key = key;
+            fs.nruns++;
+        }
+    }
+    return distinct >= 2 && fs.nruns <= distinct + 2;
+}
+
+/* selects the first entry of the shown letter and draws the list with the
+ * popup over it. Neither goes to the LCD by itself (popup_letter() only its
+ * own area, with the popup in it): the whole screen goes with the next
+ * get_action() (GUI_EVENT_ACTIONUPDATE, viewportmanager_update()), list and
+ * popup together, so the popup does not flash. */
+static void fs_show(void)
+{
+    gui_synclist_select_item(&tree_lists, fs.runs[fs.run].start);
+    tc.selected_item = fs.runs[fs.run].start;
+    gui_synclist_draw(&tree_lists);
+    popup_letter(fs.runs[fs.run].key);
+}
+
+static void fs_stop(bool redraw)
+{
+    fs.active = false;
+    if (redraw) /* the list first: closing then has nothing to put back */
+        gui_synclist_draw(&tree_lists);
+    popup_close();
+}
+
+/* after a step of the wheel has moved the list: starts the letters once
+ * the wheel has turned briskly for a while (measured by its driver) */
+static void fs_after_move(int action)
+{
+    if (action != ACTION_STD_NEXT && action != ACTION_STD_NEXTREPEAT &&
+        action != ACTION_STD_PREV && action != ACTION_STD_PREVREPEAT)
+    {
+        if (action != ACTION_NONE) /* another button: maybe another list */
+            fs.refused = false;
+        return;
+    }
+    if (TIME_AFTER(current_tick, fs.last_tick + FS_GAP))
+        fs.refused = false;
+    fs.last_tick = current_tick;
+    if (fs.refused || !button_wheel_turned_fast())
+        return;
+    if (!fs_build_runs())
+    {
+        fs.refused = true; /* not at every step while the wheel turns on */
+        return;
+    }
+    int sel = gui_synclist_get_sel_pos(&tree_lists);
+    fs.run = 0;
+    while (fs.run + 1 < fs.nruns && fs.runs[fs.run + 1].start <= sel)
+        fs.run++;
+    fs.active = true;
+    fs.hide_tick = current_tick + FS_HOLD;
+    fs_show();
+}
+
+/* while the letter is shown: the wheel goes through the letters, the time
+ * runs out, or another button closes it. Returns true if the action was
+ * used here. */
+static bool fs_handle(int action)
+{
+    switch (action)
+    {
+        case ACTION_STD_NEXT:
+        case ACTION_STD_NEXTREPEAT:
+        case ACTION_STD_PREV:
+        case ACTION_STD_PREVREPEAT:
+        {
+            int steps = MAX(1, (int)((get_action_data() >> 24) & 0x7f));
+            bool next = action == ACTION_STD_NEXT ||
+                        action == ACTION_STD_NEXTREPEAT;
+            int run = fs.run + (next ? steps : -steps);
+            run = MAX(0, MIN(run, fs.nruns - 1));
+            fs.hide_tick = current_tick + FS_HOLD;
+            if (run != fs.run)
+            {
+                fs.run = run;
+                fs_show();
+            }
+            else if (!popup_intact())
+                popup_letter(fs.runs[fs.run].key);
+            return true;
+        }
+        case ACTION_NONE:
+            if (TIME_AFTER(current_tick, fs.hide_tick))
+                fs_stop(true);
+            else if (!popup_intact()) /* the list was drawn over it */
+                popup_letter(fs.runs[fs.run].key);
+            return true;
+        case ACTION_REDRAW:
+            /* not a button: the covers of the album list post it whenever
+             * one has been loaded (albumart_list.c). It must not close the
+             * popup (it did, which looked like a flashing popup): the list
+             * with the new covers is drawn behind it. */
+            gui_synclist_draw(&tree_lists);
+            popup_letter(fs.runs[fs.run].key);
+            return true;
+        default:
+            if (IS_SYSEVENT(action)) /* USB, shutdown ...: their way */
+            {
+                fs_stop(false);
+                return false;
+            }
+            fs_stop(true);
+            return true;
+    }
+}
+#endif /* IPOD_6G */
+
 /* main loop, handles key events */
 static int dirbrowse(void)
 {
@@ -896,11 +1072,25 @@ static int dirbrowse(void)
             tc.dirlevel = 0; /* shouldnt be needed.. this code needs work! */
 
         keyclick_set_callback(gui_synclist_keyclick_callback, &tree_lists);
+#ifdef IPOD_6G
+        /* while the letter of fast scrolling is shown, the wheel goes
+         * through the letters and the time is checked often */
+        button = get_action(CONTEXT_TREE|ALLOW_SOFTLOCK,
+                            fs.active ? HZ/10 :
+                            list_do_action_timeout(&tree_lists, HZ/2));
+        if (fs.active && fs_handle(button))
+            continue;
+#else
         button = get_action(CONTEXT_TREE|ALLOW_SOFTLOCK,
                             list_do_action_timeout(&tree_lists, HZ/2));
+#endif
         oldbutton = button;
         gui_synclist_do_button(&tree_lists, &button);
         tc.selected_item = gui_synclist_get_sel_pos(&tree_lists);
+#ifdef IPOD_6G
+        if (*tc.dirfilter == SHOW_ID3DB && !fs.active)
+            fs_after_move(oldbutton);
+#endif
 #ifdef IPOD_6G
         /* the marks follow playback (tree_item_mark()) */
         if (tree_marks_changed() && tree_lists.callback_item_mark &&

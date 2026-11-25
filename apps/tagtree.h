@@ -58,6 +58,11 @@ bool tagtree_can_mark_unheard(struct tree_context *c);
 bool tagtree_mark_unheard(struct tree_context *c);
 /* the selected entry opens a plugin ("%plugin" in tagnavi.config) */
 bool tagtree_is_plugin_entry(struct tree_context *c);
+/* fast scrolling (docs/ipod6g-fast-scroll.md): the list is a list of tag
+ * values or tracks held in memory as a whole (only then it is sorted) */
+bool tagtree_fast_scroll_ok(struct tree_context *c);
+/* the first byte of the name of entry id, 0 for none or a menu text */
+int tagtree_entry_initial(struct tree_context *c, int id);
 #endif
 int tagtree_enter(struct tree_context* c, bool is_visible);
 void tagtree_exit(struct tree_context* c, bool is_visible);

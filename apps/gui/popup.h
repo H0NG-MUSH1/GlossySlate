@@ -40,8 +40,13 @@ void popup_progress(const char *text, int current, int total);
  * default answer (yes_is_default) */
 void popup_yesno(const char *const *lines, int nb_lines,
                  int seconds, bool yes_is_default);
+/* fast scrolling: a square panel with the letter 'A' .. 'Z' or '#' */
+void popup_letter(int letter);
 /* puts back what the popup covered, if nothing has drawn over it since */
 void popup_close(void);
+/* whether the last popup is still on the screen and nothing has drawn
+ * over it (no side effects, unlike popup_screen_state()) */
+bool popup_intact(void);
 
 /* for the status bar skin: whether a popup is on the screen untouched (the
  * skin must not draw over it), or was drawn over since the last call (the

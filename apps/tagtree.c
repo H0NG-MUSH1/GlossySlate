@@ -3210,6 +3210,33 @@ static bool media_row(struct tree_context *c, int id, int *media,
            *media > TAGCACHE_MEDIA_MUSIC && *media < TAGCACHE_MEDIA_COUNT;
 }
 
+/* Fast scrolling (tree.c, docs/ipod6g-fast-scroll.md): a list of tag values
+ * or tracks, held in memory as a whole. A list larger than the cache comes
+ * in chunks and unsorted (retrieve_entries()), and reading its names would
+ * load chunks; tree.c checks itself whether the order of the initials makes
+ * sense for letters (track lists in track order do not). */
+bool tagtree_fast_scroll_ok(struct tree_context *c)
+{
+    return !c->dirfull && current_offset == 0 &&
+           current_entry_count >= c->filesindir &&
+           (c->currtable == TABLE_NAVIBROWSE ||
+            c->currtable == TABLE_ALLSUBENTRIES ||
+            c->currtable == TABLE_ALLSUBENTRIES_SORTED_BY_ALBUMS);
+}
+
+/* the first byte of the name of entry id (as the list sorts it), 0 for none
+ * or a text of the language (menu entries, special entries) */
+int tagtree_entry_initial(struct tree_context *c, int id)
+{
+    struct tagentry *entry = tagtree_get_entry(c, id);
+    if (!entry || !entry->name)
+        return 0;
+    unsigned char *name = (unsigned char *)entry->name;
+    if (P2ID(name) >= 0)
+        return 0;
+    return name[0];
+}
+
 /* Whether rows of the current table can carry marks (tree_item_mark()):
  * tracks, and albums of podcasts and audiobooks */
 bool tagtree_has_item_marks(struct tree_context *c)

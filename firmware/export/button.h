@@ -89,6 +89,11 @@ void wheel_send_events(bool send);
 #ifdef HAVE_WHEEL_ACCELERATION
 int button_apply_acceleration(const unsigned int data);
 #endif
+#ifdef IPOD_6G
+/* fast scrolling (docs/ipod6g-fast-scroll.md): the wheel turned briskly
+ * for a while (one rotation a second for a second), button-clickwheel.c */
+bool button_wheel_turned_fast(void);
+#endif
 
 #define BUTTON_NONE         0x00000000
 

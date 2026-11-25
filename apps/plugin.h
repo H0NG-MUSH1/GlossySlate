@@ -180,10 +180,12 @@ int plugin_open(const char *plugin, const char *parameter);
  * when this happens please take the opportunity to sort in
  * any new functions "waiting" at the end of the list.
  */
-#define PLUGIN_API_VERSION 288
+#define PLUGIN_API_VERSION 289
 
 /* 287: playlist_catalog_dir removed from struct user_settings (fork, iPod 6G) */
 /* 288: font_load_ex() at the end (fork, iPod 6G: tempo screen) */
+/* 289: get_action_data(), button_wheel_turned_fast(), popup_letter(),
+ *      popup_close() at the end (fork, iPod 6G: fast scrolling in Cover Flow) */
 
 /* 239 Marks the removal of ARCHOS HWCODEC and CHARCELL */
 
@@ -1066,6 +1068,15 @@ struct plugin_api {
     /* load a font with the buffer a skin gives it (glyphs to cache): a font
      * the skin has loaded already is shared, not loaded again bigger */
     int (*font_load_ex)(const char *path, size_t buffer_size, int glyphs);
+#ifdef IPOD_6G
+    /* fast scrolling in Cover Flow (docs/ipod6g-fast-scroll.md): the data
+     * of the last action (wheel steps), whether the wheel has turned two
+     * rotations briskly, and the letter popup of the database lists */
+    intptr_t (*get_action_data)(void);
+    bool (*button_wheel_turned_fast)(void);
+    void (*popup_letter)(int letter);
+    void (*popup_close)(void);
+#endif
 };
 
 /* plugin header */

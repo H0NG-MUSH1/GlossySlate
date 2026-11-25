@@ -18,6 +18,7 @@ style popups, so this is done in the firmware.
 | message with symbol, 1–2 lines | the same, for known messages | text + 28, 132–240; 104 / 120 | symbol 48 × 48 at ((W − 48) / 2, 16), lines from y 74 |
 | progress, 1–3 lines | `splash_progress()` | text + 28, 208–240; 24 + 16 n + 16 | lines from y 12, bar at (14, 12 + 16 n + 8), W − 28 wide |
 | yes/no, 1–3 lines | `gui_syncyesno_run()` | 240; 80 + 16 n | question from y 12; buttons "Yes" (blue) and "No" (slate), 102 × 26 each at x 14 and 124; below them "Center button" / "Other button", with a time limit followed by the time left |
+| letter of fast scrolling | `popup_letter()`, from `tree.c` (database) and Cover Flow | 112 × 112 | one letter (A–Z, #) 72 px in `#DFE6F3`, see [ipod6g-fast-scroll.md](ipod6g-fast-scroll.md) |
 
 The panel lies at `x = (320 − W) / 2`, `y = (240 − H) / 2`. Lines break at
 212 px at spaces and line feeds; a word that is too wide on its own is cut

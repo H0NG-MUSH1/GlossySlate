@@ -6124,6 +6124,147 @@ static bool prompt_reinit(void)
   Main function that also contain the main plasma
   algorithm.
  */
+#ifdef IPOD_6G
+/* Fast scrolling (docs/ipod6g-fast-scroll.md), as in the lists of the
+ * database: turning the wheel briskly for a while
+ * (button_wheel_turned_fast()) shows the letter popup with the initial of
+ * the centre album (of its artist when sorted by artist). From then on
+ * every step of the wheel goes to the next or previous letter, at any speed,
+ * and Cover Flow jumps to the first album of it. The popup stays on the
+ * screen the whole time (drawn over every frame), only its letter changes;
+ * it goes 2 s after the last step, and any other button closes it (and does
+ * nothing else). Sorted by year, or while the album art cache is still being
+ * built (the order may change, as for PF_JMP), there are no letters. */
+#define FS_MIN_ALBUMS 20            /* fewer albums need no letters */
+#define FS_GAP        (HZ * 3 / 10) /* a pause of the wheel: a new turn */
+#define FS_HOLD       (HZ * 2)      /* the letter stays after the last step */
+#define FS_MAX_RUNS   64
+
+static struct {
+    bool active;
+    bool refused;       /* no letters now: not again in this turn */
+    long last_tick;     /* of the last step of the wheel */
+    long hide_tick;     /* when the letter goes */
+    int nruns, run;     /* runs of albums with the same initial, the shown one */
+    struct { int start; char key; } runs[FS_MAX_RUNS];
+} pf_fs;
+
+/* 'A' .. 'Z', '#' for digits, signs and other scripts */
+static char fs_key(int c)
+{
+    if (c >= 'a' && c <= 'z')
+        return c - 'a' + 'A';
+    if (c >= 'A' && c <= 'Z')
+        return c;
+    return '#';
+}
+
+/* the runs of equal initials in the order of the albums; only a sorted
+ * order has one run per letter (a few more for '#' at both ends) */
+static bool fs_build_runs(void)
+{
+    bool by_artist = pf_cfg.sort_albums_by != SORT_BY_NAME;
+    unsigned long seen = 0;
+    int distinct = 0;
+
+    pf_fs.nruns = 0;
+    if (pf_cfg.sort_albums_by == SORT_BY_YEAR ||
+        aa_cache.inspected < pf_idx.album_ct ||
+        pf_idx.album_ct < FS_MIN_ALBUMS)
+        return false;
+    for (int i = 0; i < pf_idx.album_ct; i++)
+    {
+        char key = fs_key((unsigned char)get_slide_name(i, by_artist)[0]);
+        unsigned long bit = 1UL << (key == '#' ? 26 : key - 'A');
+        if (!(seen & bit))
+        {
+            seen |= bit;
+            distinct++;
+        }
+        if (pf_fs.nruns == 0 || pf_fs.runs[pf_fs.nruns - 1].key != key)
+        {
+            if (pf_fs.nruns == FS_MAX_RUNS)
+                return false;
+            pf_fs.runs[pf_fs.nruns].start = i;
+            pf_fs.runs[pf_fs.nruns].key = key;
+            pf_fs.nruns++;
+        }
+    }
+    return distinct >= 2 && pf_fs.nruns <= distinct + 2;
+}
+
+/* the first album of the shown letter in the centre, without animation */
+static void fs_jump(void)
+{
+    pf_state = pf_idle;
+    set_current_slide(pf_fs.runs[pf_fs.run].start);
+}
+
+static void fs_stop(void)
+{
+    pf_fs.active = false;
+    rb->popup_close();
+}
+
+/* after a step of the wheel moved Cover Flow: starts the letters once the
+ * wheel has turned briskly for a while (measured by its driver) */
+static void fs_after_move(void)
+{
+    if (TIME_AFTER(*rb->current_tick, pf_fs.last_tick + FS_GAP))
+        pf_fs.refused = false; /* the album art cache may be ready now */
+    pf_fs.last_tick = *rb->current_tick;
+    if (pf_fs.refused || !rb->button_wheel_turned_fast())
+        return;
+    if (!fs_build_runs())
+    {
+        pf_fs.refused = true; /* not at every step while the wheel turns on */
+        return;
+    }
+    pf_fs.run = 0;
+    while (pf_fs.run + 1 < pf_fs.nruns &&
+           pf_fs.runs[pf_fs.run + 1].start <= center_index)
+        pf_fs.run++;
+    pf_fs.active = true;
+    pf_fs.hide_tick = *rb->current_tick + FS_HOLD;
+    fs_jump();
+}
+
+/* while the letter is shown: the wheel goes through the letters, the time
+ * runs out, or another button closes it. Returns true if the action was
+ * used here. */
+static bool fs_handle(int button)
+{
+    switch (button)
+    {
+        case PF_NEXT:
+        case PF_NEXT_REPEAT:
+        case PF_PREV:
+        case PF_PREV_REPEAT:
+        {
+            int steps = MAX(1, (int)((rb->get_action_data() >> 24) & 0x7f));
+            bool next = button == PF_NEXT || button == PF_NEXT_REPEAT;
+            int run = pf_fs.run + (next ? steps : -steps);
+            run = MAX(0, MIN(run, pf_fs.nruns - 1));
+            pf_fs.hide_tick = *rb->current_tick + FS_HOLD;
+            if (run != pf_fs.run)
+            {
+                pf_fs.run = run;
+                fs_jump();
+            }
+            return true;
+        }
+        case ACTION_NONE:
+            if (TIME_AFTER(*rb->current_tick, pf_fs.hide_tick))
+                fs_stop();
+            return true;
+        default:
+            fs_stop();
+            /* USB, power off ...: their way; other buttons only close */
+            return !IS_SYSEVENT(button);
+    }
+}
+#endif /* IPOD_6G */
+
 static int pictureflow_main(void)
 {
     int ret;
@@ -6258,11 +6399,20 @@ static int pictureflow_main(void)
 #endif
         draw_album_text();
 
+#ifdef IPOD_6G
+        /* the letter of fast scrolling over every frame while it is shown */
+        if (pf_fs.active)
+            rb->popup_letter(pf_fs.runs[pf_fs.run].key);
+#endif
 
         /* Copy offscreen buffer to LCD and give time to other threads */
         mylcd_update();
         rb->yield();
 
+#ifdef IPOD_6G
+        if (pf_fs.active && fs_handle(button))
+            button = ACTION_NONE; /* used by the letters */
+#endif
         switch (button) {
         case PF_QUIT:
             if (pf_state == pf_show_tracks)
@@ -6358,7 +6508,12 @@ static int pictureflow_main(void)
                 skip_animation_to_idle_state();
 
             if ( pf_state == pf_idle || pf_state == pf_scrolling )
+            {
                 show_next_slide();
+#ifdef IPOD_6G
+                fs_after_move();
+#endif
+            }
             break;
 
         case PF_PREV:
@@ -6376,7 +6531,12 @@ static int pictureflow_main(void)
                 skip_animation_to_idle_state();
 
             if ( pf_state == pf_idle || pf_state == pf_scrolling )
+            {
                 show_previous_slide();
+#ifdef IPOD_6G
+                fs_after_move();
+#endif
+            }
             break;
         case PF_SORTING_NEXT:
             sort_albums((pf_cfg.sort_albums_by + 1) % SORT_VALUES_SIZE, false);

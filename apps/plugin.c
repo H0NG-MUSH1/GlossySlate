@@ -58,6 +58,9 @@
 #include "peakmeter.h"
 #include "bmp.h"
 #include "bidi.h"
+#ifdef IPOD_6G
+#include "gui/popup.h"
+#endif
 
 #ifdef USB_ENABLE_HID
 #include "usbstack/usb_hid.h"
@@ -897,6 +900,12 @@ static const struct plugin_api rockbox_api = {
        the API gets incompatible */
     settings_apply,
     font_load_ex,
+#ifdef IPOD_6G
+    get_action_data,
+    button_wheel_turned_fast,
+    popup_letter,
+    popup_close,
+#endif
 };
 
 static int plugin_buffer_handle;

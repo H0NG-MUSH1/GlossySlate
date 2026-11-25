@@ -1,4 +1,8 @@
-# Glossy Slate for Rockbox – iPod Classic 6G
+# Glossy Slate for Rockbox - iPod Classic 6G
+
+<div align="center">
+  <img src="GlossySlate/screenshots/glossyslate_logodunkel_968.png" alt="GlossySlate Logo" width="120">
+<div>
 
 Glossy Slate is a theme for the iPod Classic (6th generation) together with
 the modified Rockbox firmware it is built for. The theme uses features that
@@ -10,16 +14,13 @@ categories), so the two belong together.
 > target `ipod6g` only. Use at your own risk and keep a backup of your
 > iPod's contents.
 
-| Main menu | Now playing | Album list |
-| --- | --- | --- |
-| ![Main menu](GlossySlate/previews/main_menu_now_playing.png) | ![Now playing](GlossySlate/previews/now_playing.png) | ![Album list](GlossySlate/previews/album_list.png) |
+| ![Main menu with the mini player](GlossySlate/screenshots/main_menu_mini_player.png) | ![Now playing](GlossySlate/screenshots/now_playing.png) | ![Cover Flow](GlossySlate/screenshots/cover_flow.png) |
+| :---: | :---: | :---: |
+| **Main menu** with the mini player of the playing track | **Now playing** with the tilted cover and its reflection | **Cover Flow** after the original iPod |
 
-| Settings | Lock screen | Quick menu |
-| --- | --- | --- |
-| ![Settings](GlossySlate/previews/settings_repeat.png) | ![Lock screen](GlossySlate/previews/lock_screen.png) | ![Quick menu](GlossySlate/previews/quick_menu.png) |
-
-The pictures come from the skin simulator (`GlossySlate/tools/preview.py`)
-with fictitious music; all previews are in `GlossySlate/previews/`.
+All screenshots show fictitious music. They are in `GlossySlate/screenshots/`;
+the previews of the skin simulator (`GlossySlate/tools/preview.py`) are in
+`GlossySlate/previews/`.
 
 ## What is in this repository
 
@@ -27,9 +28,10 @@ with fictitious music; all previews are in `GlossySlate/previews/`.
 | --- | --- |
 | `GlossySlate/.rockbox/` | The theme: status bar skin, now playing skin, bitmaps, fonts, theme config |
 | `GlossySlate/tools/` | The tools that generate the theme's skins, bitmaps and fonts, and the previews |
+| `GlossySlate/screenshots/` | The screenshots of this page |
 | `GlossySlate/DESIGN.md`, `ROCKBOX-CHANGES.md` | Design specification and what the theme needs from the firmware |
 | `apps/`, `firmware/`, `lib/`, … | Rockbox with the changes of this fork |
-| `docs/ipod6g-*.md` | Developer notes on every change of the fork |
+| `docs/ipod6g-*.md` | Developer notes on every change of the fork if you want to adjust the firmware further for your needs|
 
 The fork is based on Rockbox commit `41a3e60b9c`. All changes for the iPod
 are guarded by `IPOD_6G` in the source.
@@ -41,12 +43,32 @@ are guarded by `IPOD_6G` in the source.
 - Two-column menus: list on the left, a sidebar on the right with a symbol,
   the title and a count for the selected entry (albums, podcasts,
   audiobooks, playlists, bookmarks, recordings, shortcuts).
-- Now playing screen with a tilted album cover, reflection and rounded
-  corners, track number, title, artist, album and format.
-- Lock screen with clock, quick menu for volume, brightness, shuffle and
-  repeat, USB screens for "connected" and "ejected".
+
+| ![Main menu with Podcasts selected](GlossySlate/screenshots/main_menu_podcasts.png) | ![Main menu when nothing is playing](GlossySlate/screenshots/main_menu_nothing_playing.png) | ![Time and date](GlossySlate/screenshots/settings_time_date.png) |
+| :---: | :---: | :---: |
+| The sidebar shows the symbol and the count of the selected entry (here: 3 podcasts) | When nothing is playing, "Resume Playback" shows the note and "Nothing playing" | "Time & Date" shows a calendar card with today's date |
+
 - Glossy selection bar, list arrows, values on the right of setting rows,
   an overlay scrollbar that fades out.
+
+| ![Playback settings](GlossySlate/screenshots/playback_settings.png) | ![Database](GlossySlate/screenshots/database.png) |
+| :---: | :---: |
+| Settings with their values in the row (Shuffle On, Repeat All) and the tile of the selected entry in the sidebar | Long lists over the full width, with arrows and the scrollbar that fades out |
+
+- Now playing screen with a tilted album cover, reflection and rounded
+  corners (optional), track number, title, artist, album and format.
+
+| ![Now playing](GlossySlate/screenshots/now_playing.png) |
+| :---: |
+| Now playing with the tilted cover and its reflection |
+
+- Lock screen with clock, quick menu for volume, brightness, shuffle and
+  repeat, USB screens for "connected" and "ejected".
+
+| ![Lock screen](GlossySlate/screenshots/lock_screen.png) | ![Quick menu](GlossySlate/screenshots/quick_menu.png) | ![USB connected](GlossySlate/screenshots/usb_connected.png) |
+| :---: | :---: | :---: |
+| Lock screen with the date, the clock and the playing title | Quick menu: volume, brightness, shuffle and repeat | USB mode with the black status bar like the original iPod |
+
 - Fonts "GlossySlate Sans", rendered from Liberation Sans 2.
 
 ### Firmware
@@ -62,6 +84,19 @@ are guarded by `IPOD_6G` in the source.
   again from the database.
 - **Album list with covers** and a speaker icon at the playing track in all
   lists.
+
+| ![Episodes of a podcast](GlossySlate/screenshots/podcast_episodes.png) | ![Album list](GlossySlate/screenshots/album_list.png) |
+| :---: | :---: |
+| Episodes of a podcast: the blue dot marks episodes not yet heard, the speaker the one playing | Album list with covers, the entry "[Shuffle]" and the default cover for albums without a picture |
+
+- **Fast scrolling:** turning the wheel fast in a list of the database
+  (artists, albums, podcasts, audiobooks …) shows a square popup with the
+  initial of the selected entry, as on the original iPod. From then on the
+  popup stays and the wheel goes through the letters, while the list behind
+  it jumps to the first entry of each letter; 2 s after the last turn the
+  popup goes. Cover Flow does the same with the covers (by artist or album
+  name, as the albums are sorted).
+
 - **Cover Flow after the original iPod (RetailOS):** the first entry of the
   database opens Cover Flow (Rockpod's Cover Flow, in the colours of the
   theme and below its status bar, with smooth animations whose speed can be
@@ -71,6 +106,11 @@ are guarded by `IPOD_6G` in the source.
   the fading scrollbar and the speaker at the playing track. The other
   covers stay visible around it; Menu turns the cover back. Albums without
   a picture show the theme's default cover.
+
+| ![Cover Flow with the track list on the back of the cover](GlossySlate/screenshots/cover_flow_tracks.png) |
+| :---: |
+| The back of the cover lists the album's tracks; the other covers stay visible around it |
+
 - **Popups** drawn as glossy panels with shadows (messages, progress,
   yes/no with "Center button" / "Other button").
 - **USB:** a second screen once the computer has ejected the drive.
@@ -91,16 +131,17 @@ are guarded by `IPOD_6G` in the source.
 
 ## Installation
 
+A more detailed installation readme can be found [here](GlossySlate/README.md).
+
 1. **Bootloader:** install the Rockbox bootloader for the iPod Classic as
-   described in the Rockbox manual.
-2. **Firmware:** build it (below) and unzip `rockbox.zip` into the root of
-   the iPod.
-3. **Theme:** copy the contents of `GlossySlate/.rockbox/` into the iPod's
-   `/.rockbox/` folder. On the iPod choose *Settings › Theme Settings ›
-   Browse Theme Files › glossyslate*.
+   described in the [Rockbox](https://www.rockbox.org/) manual.
+2. **Firmware & Theme:** build the firmware yourself or unzip the latest release
+    into the root of the iPod. The release also contains the theme. Copy the contents
+    of `GlossySlate/.rockbox/` into the iPod's `/.rockbox/` folder. On the iPod choose
+    *Settings › Theme Settings › Browse Theme Files › glossyslate*.
 4. **Music:** put music into `/Music`, podcasts into `/Podcasts/<podcast>/`
    and audiobooks into `/Audiobooks/<audiobook>/`, then build the database
-   (*Settings › General Settings › Database › Initialize Now*). Loading the
+   (*Main Menu › Music (hold center button) › Initialize Now*). Loading the
    database into RAM is recommended.
 
 The theme follows the language set on the iPod (*Settings › General
