@@ -14,9 +14,18 @@ categories), so the two belong together.
 > target `ipod6g` only. Use at your own risk and keep a backup of your
 > iPod's contents.
 
-| ![Main menu with the mini player](GlossySlate/screenshots/main_menu_mini_player.png) | ![Now playing](GlossySlate/screenshots/now_playing.png) | ![Cover Flow](GlossySlate/screenshots/cover_flow.png) |
-| :---: | :---: | :---: |
-| **Main menu** with the mini player of the playing track | **Now playing** with the tilted cover and its reflection | **Cover Flow** after the original iPod |
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/main_menu_mini_player.png" alt="Main menu with the mini player" width="240"></td>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/now_playing.png" alt="Now playing" width="240"></td>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/cover_flow.png" alt="Cover Flow" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Main menu</b> with the mini player of the playing track</td>
+    <td align="center"><b>Now playing</b> with the tilted cover and its reflection</td>
+    <td align="center"><b>Cover Flow</b> after the original iPod</td>
+  </tr>
+</table>
 
 All screenshots show fictitious music. They are in `GlossySlate/screenshots/`;
 the previews of the skin simulator (`GlossySlate/tools/preview.py`) are in
@@ -44,30 +53,60 @@ are guarded by `IPOD_6G` in the source.
   the title and a count for the selected entry (albums, podcasts,
   audiobooks, playlists, bookmarks, recordings, shortcuts).
 
-| ![Main menu with Podcasts selected](GlossySlate/screenshots/main_menu_podcasts.png) | ![Main menu when nothing is playing](GlossySlate/screenshots/main_menu_nothing_playing.png) | ![Time and date](GlossySlate/screenshots/settings_time_date.png) |
-| :---: | :---: | :---: |
-| The sidebar shows the symbol and the count of the selected entry (here: 3 podcasts) | When nothing is playing, "Resume Playback" shows the note and "Nothing playing" | "Time & Date" shows a calendar card with today's date |
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/main_menu_podcasts.png" alt="Main menu with Podcasts selected" width="240"></td>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/main_menu_nothing_playing.png" alt="Main menu when nothing is playing" width="240"></td>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/settings_time_date.png" alt="Time and date" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center">The sidebar shows the symbol and the count of the selected entry (here: 3 podcasts)</td>
+    <td align="center">When nothing is playing, "Resume Playback" shows the note and "Nothing playing"</td>
+    <td align="center">"Time &amp; Date" shows a calendar card with today's date</td>
+  </tr>
+</table>
 
 - Glossy selection bar, list arrows, values on the right of setting rows,
   an overlay scrollbar that fades out.
 
-| ![Playback settings](GlossySlate/screenshots/playback_settings.png) | ![Database](GlossySlate/screenshots/database.png) |
-| :---: | :---: |
-| Settings with their values in the row (Shuffle On, Repeat All) and the tile of the selected entry in the sidebar | Long lists over the full width, with arrows and the scrollbar that fades out |
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="GlossySlate/screenshots/playback_settings.png" alt="Playback settings" width="240"></td>
+    <td align="center" width="50%"><img src="GlossySlate/screenshots/database.png" alt="Database" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center">Settings with their values in the row (Shuffle On, Repeat All) and the tile of the selected entry in the sidebar</td>
+    <td align="center">Long lists over the full width, with arrows and the scrollbar that fades out</td>
+  </tr>
+</table>
 
 - Now playing screen with a tilted album cover, reflection and rounded
   corners (optional), track number, title, artist, album and format.
 
-| ![Now playing](GlossySlate/screenshots/now_playing.png) |
-| :---: |
-| Now playing with the tilted cover and its reflection |
+<table>
+  <tr>
+    <td align="center" width="100%"><img src="GlossySlate/screenshots/now_playing.png" alt="Now playing" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center">Now playing with the tilted cover and its reflection</td>
+  </tr>
+</table>
 
 - Lock screen with clock, quick menu for volume, brightness, shuffle and
   repeat, USB screens for "connected" and "ejected".
 
-| ![Lock screen](GlossySlate/screenshots/lock_screen.png) | ![Quick menu](GlossySlate/screenshots/quick_menu.png) | ![USB connected](GlossySlate/screenshots/usb_connected.png) |
-| :---: | :---: | :---: |
-| Lock screen with the date, the clock and the playing title | Quick menu: volume, brightness, shuffle and repeat | USB mode with the black status bar like the original iPod |
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/lock_screen.png" alt="Lock screen" width="240"></td>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/quick_menu.png" alt="Quick menu" width="240"></td>
+    <td align="center" width="33%"><img src="GlossySlate/screenshots/usb_connected.png" alt="USB connected" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center">Lock screen with the date, the clock and the playing title</td>
+    <td align="center">Quick menu: volume, brightness, shuffle and repeat</td>
+    <td align="center">USB mode with the black status bar like the original iPod</td>
+  </tr>
+</table>
 
 - Fonts "GlossySlate Sans", rendered from Liberation Sans 2.
 
@@ -85,9 +124,16 @@ are guarded by `IPOD_6G` in the source.
 - **Album list with covers** and a speaker icon at the playing track in all
   lists.
 
-| ![Episodes of a podcast](GlossySlate/screenshots/podcast_episodes.png) | ![Album list](GlossySlate/screenshots/album_list.png) |
-| :---: | :---: |
-| Episodes of a podcast: the blue dot marks episodes not yet heard, the speaker the one playing | Album list with covers, the entry "[Shuffle]" and the default cover for albums without a picture |
+<table>
+  <tr>
+    <td align="center" width="50%"><img src="GlossySlate/screenshots/podcast_episodes.png" alt="Episodes of a podcast" width="240"></td>
+    <td align="center" width="50%"><img src="GlossySlate/screenshots/album_list.png" alt="Album list" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center">Episodes of a podcast: the blue dot marks episodes not yet heard, the speaker the one playing</td>
+    <td align="center">Album list with covers, the entry "[Shuffle]" and the default cover for albums without a picture</td>
+  </tr>
+</table>
 
 - **Fast scrolling:** turning the wheel fast in a list of the database
   (artists, albums, podcasts, audiobooks …) shows a square popup with the
@@ -107,9 +153,14 @@ are guarded by `IPOD_6G` in the source.
   covers stay visible around it; Menu turns the cover back. Albums without
   a picture show the theme's default cover.
 
-| ![Cover Flow with the track list on the back of the cover](GlossySlate/screenshots/cover_flow_tracks.png) |
-| :---: |
-| The back of the cover lists the album's tracks; the other covers stay visible around it |
+<table>
+  <tr>
+    <td align="center" width="100%"><img src="GlossySlate/screenshots/cover_flow_tracks.png" alt="Cover Flow with the track list on the back of the cover" width="240"></td>
+  </tr>
+  <tr>
+    <td align="center">The back of the cover lists the album's tracks; the other covers stay visible around it</td>
+  </tr>
+</table>
 
 - **Popups** drawn as glossy panels with shadows (messages, progress,
   yes/no with "Center button" / "Other button").
