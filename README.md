@@ -1,7 +1,7 @@
 # Glossy Slate for Rockbox - iPod Classic 6G
 
 <div align="center">
-  <img src="GlossySlate/screenshots/glossyslate_logodunkel_968.png" alt="GlossySlate Logo" width="120">
+  <img src="GlossySlate/screenshots/glossyslate_logodunkel_968.png" alt="GlossySlate Logo" width="350">
 <div>
 
 Glossy Slate is a theme for the iPod Classic (6th generation) together with
